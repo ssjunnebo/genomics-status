@@ -412,10 +412,10 @@ const vReadsTotalComponent = {
                     <table class="table reads_table">
                         <thead>
                             <tr class="darkth">
+                                <th>Include</th>
                                 <th>Sample</th>
-                                <th>Average % > q30 (selected)</th>
-                                <th>Add</th>
                                 <th>{{ countLabel }} (selected)</th>
+                                <th>Average % > q30 (selected)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -425,11 +425,6 @@ const vReadsTotalComponent = {
                                     style="cursor: pointer;"
                                     @click="toggleSampleExpanded(sample)">
                                     <td>
-                                        <span class="me-2">{{ expandedSamples[sample] ? '▼' : '▶' }}</span>
-                                        <a class="text-decoration-none" :href="'/project/' + projectFromSample(sample)" @click.stop>{{ sample }}</a>
-                                    </td>
-                                    <td>{{ formatQ30(summaryRowQ30Map[sample]) }}</td>
-                                    <td>
                                         <input
                                             type="checkbox"
                                             :checked="isSampleChecked(sample)"
@@ -438,25 +433,30 @@ const vReadsTotalComponent = {
                                             @change="onSampleCheckboxChange(sample, $event)"
                                         />
                                     </td>
+                                    <td>
+                                        <span class="me-2">{{ expandedSamples[sample] ? '▼' : '▶' }}</span>
+                                        <a class="text-decoration-none" :href="'/project/' + projectFromSample(sample)" @click.stop>{{ sample }}</a>
+                                    </td>
                                     <td>{{ summaryRowMap[sample].toLocaleString() }}</td>
+                                    <td>{{ formatQ30(summaryRowQ30Map[sample]) }}</td>
                                 </tr>
                                 <tr v-if="expandedSamples[sample]">
                                     <td colspan="4" style="padding: 0 0 10px 30px;">
                                         <table class="table table-sm mb-0">
                                             <thead>
                                                 <tr class="darkth">
-                                                    <th>Flowcell/Lane</th>
-                                                    <th>% > q30</th>
-                                                    <th>Add</th>
+                                                    <th>Include</th>
+                                                    <th>Flowcell:Lane</th>
                                                     <th>{{ countLabel }}</th>
+                                                    <th>% > q30</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <tr v-for="d in readsData[sample]" :key="d.fcp">
-                                                    <td><a class="text-decoration-none" :href="fcpFlowcellUrl(d.fcp)">{{ d.fcp }}</a></td>
-                                                    <td :class="q30Class(d)">{{ d.q30 }}</td>
                                                     <td><input type="checkbox" v-model="checkedState[sample + '_' + d.fcp]"/></td>
+                                                    <td><a class="text-decoration-none" :href="fcpFlowcellUrl(d.fcp)">{{ d.fcp }}</a></td>
                                                     <td>{{ d.cl }}</td>
+                                                    <td :class="q30Class(d)">{{ d.q30 }}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -466,9 +466,9 @@ const vReadsTotalComponent = {
                         </tbody>
                         <tfoot>
                             <tr class="darkth">
+                                <th></th>
+                                <th></th>
                                 <th>Total selected</th>
-                                <th></th>
-                                <th></th>
                                 <th>{{ totalClusters.toLocaleString() }}</th>
                             </tr>
                         </tfoot>
