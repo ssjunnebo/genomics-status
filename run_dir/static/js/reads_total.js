@@ -163,14 +163,18 @@ const vReadsTotalComponent = {
                 }
             });
         },
-        downloadSummary() {
-            let text = `Sample\t${this.countLabel}\n`;
-            this.summaryRows.forEach(r => {
-                text += `${r.sample}\t${r.checked}\n`;
+        downloadMainTableTSV() {
+            const rows = [`Sample\tFlowcell\tQ30\tSelected\t${this.countLabel}`];
+            this.sampleNames.forEach(sample => {
+                this.readsData[sample].forEach(d => {
+                    const selected = this.checkedState[`${sample}_${d.fcp}`] ? 'Yes' : 'No';
+                    const q30Value = d.q30 ?? '';
+                    const countValue = d.cl ?? '';
+                    rows.push(`${sample}\t${d.fcp}\t${q30Value}\t${selected}\t${countValue}`);
+                });
             });
-            text += `Total (${this.summaryRows.length} samples)\t${this.totalClusters}\n`;
-            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-            saveAs(blob, `${this.query}_reads_total.txt`);
+            const blob = new Blob([rows.join('\n') + '\n'], { type: 'text/tab-separated-values;charset=utf-8' });
+            saveAs(blob, `${this.query}_reads_total.tsv`);
         },
         submitSearch() {
             const val = this.$refs.queryInput.value.trim();
@@ -229,7 +233,7 @@ const vReadsTotalComponent = {
         }
     },
     template: /*html*/`
-        <div :style="hasData ? 'margin-left: 270px;' : ''">
+        <div>
             <h1>Read Count Totals: <span>{{ query }}</span></h1>
             <div id="querybox">
                 <form @submit.prevent="submitSearch">
@@ -269,35 +273,12 @@ const vReadsTotalComponent = {
         </template>
 
         <template v-else-if="hasData">
-            <!-- Fixed sidebar -->
-            <div style="width: 250px; position: fixed; left: 10px; top: 65px; height: 90%; overflow: auto;">
-                <h3>Summary of Selected {{ countLabel }} Counts</h3>
-                <p><button class="btn btn-outline-secondary" @click="downloadSummary">Download as tab-delimited file</button></p>
-                <table class="table table-hover">
-                    <thead>
-                        <tr class="darkth"><th>Sample</th><th>{{ countLabel }}</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="row in summaryRows" :key="row.sample">
-                            <td><a href="#" @click.prevent="highlightSample(row.sample)" class="text-decoration-none">{{ row.sample }}</a></td>
-                            <td class="text-right">{{ row.checked.toLocaleString() }}</td>
-                        </tr>
-                    </tbody>
-                    <tfoot>
-                        <tr class="darkth">
-                            <th>Total ({{ summaryRows.length }} samples)</th>
-                            <th class="text-right">{{ totalClusters.toLocaleString() }}</th>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-
-            <!-- Main content -->
-            <div style="margin-left: 270px;">
+            <div>
                 <div id="reads_total_summary_chart"></div>
                 <div class="btn-group mb-3" role="group">
                     <input type="button" class="btn btn-outline-secondary" value="Check all" @click="checkAll"/>
                     <input type="button" class="btn btn-outline-secondary" value="Uncheck all" @click="uncheckAll"/>
+                    <input type="button" class="btn btn-outline-secondary" value="Download main table as TSV" @click="downloadMainTableTSV"/>
                     <input type="text" class="form-control" v-model="checkKeyFilter"/>
                 </div>
                 <div class="container-fluid">
