@@ -498,6 +498,9 @@ const vReadsTotalComponent = {
         <template v-else-if="hasData">
             <div>
                 <div id="reads_total_summary_chart"></div>
+                <p v-if="expectedMinYieldPerSample !== null" class="text-muted small mb-3">
+                    Expected minimum yield / sample line = ordered lanes x 600M x 0.9 x 0.75 / number of project samples.
+                </p>
                 <div class="btn-group mb-3" role="group">
                     <input type="button" class="btn btn-outline-secondary" :value="isAllSelected ? 'Uncheck all' : 'Check all'" @click="toggleAllSelection"/>
                     <input type="button" class="btn btn-outline-secondary" :value="areAllSamplesExpanded ? 'Collapse all' : 'Expand all'" @click="toggleAllSamplesExpanded"/>
