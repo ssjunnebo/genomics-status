@@ -54,7 +54,10 @@ const vReadsTotalComponent = {
                 const avgQ30 = checkedQ30Count > 0 ? q30Sum / checkedQ30Count : null;
                 const firstRow = rows.find(d => d.run_mode != null) || rows[0];
                 const threshold = firstRow ? this.getRowThreshold(firstRow) : 85.0;
-                return { sample, checkedReads, uncheckedReads, avgQ30, threshold };
+                const libQc = firstRow && Object.prototype.hasOwnProperty.call(firstRow, 'lib_qc')
+                    ? firstRow.lib_qc
+                    : '-';
+                return { sample, checkedReads, uncheckedReads, avgQ30, threshold, libQc };
             });
         },
         summaryRowMap() {
@@ -67,6 +70,11 @@ const vReadsTotalComponent = {
             this.summaryRows.forEach(r => { map[r.sample] = r.avgQ30; });
             return map;
         },
+        summaryRowLibQcMap() {
+            const map = {};
+            this.summaryRows.forEach(r => { map[r.sample] = r.libQc; });
+            return map;
+        },
         sortedSampleNames() {
             const direction = this.sortDirection === 'asc' ? 1 : -1;
             return [...this.sampleNames].sort((leftSample, rightSample) => {
@@ -76,6 +84,13 @@ const vReadsTotalComponent = {
                 if (this.sortKey === 'reads') {
                     leftValue = this.summaryRowMap[leftSample] || 0;
                     rightValue = this.summaryRowMap[rightSample] || 0;
+                } else if (this.sortKey === 'flowcells') {
+                    leftValue = this.sampleFlowcellCount(leftSample);
+                    rightValue = this.sampleFlowcellCount(rightSample);
+                } else if (this.sortKey === 'libQc') {
+                    const libQcOrder = { Pass: 2, Fail: 1, '-': 0 };
+                    leftValue = libQcOrder[this.sampleLibQcLabel(leftSample)] ?? -1;
+                    rightValue = libQcOrder[this.sampleLibQcLabel(rightSample)] ?? -1;
                 } else if (this.sortKey === 'q30') {
                     leftValue = this.summaryRowQ30Map[leftSample] ?? -1;
                     rightValue = this.summaryRowQ30Map[rightSample] ?? -1;
@@ -138,6 +153,12 @@ const vReadsTotalComponent = {
         areAllSamplesExpanded() {
             if (this.sampleNames.length === 0) return false;
             return this.sampleNames.every(sample => this.expandedSamples[sample]);
+        },
+        passedLibQcSamples() {
+            return this.sampleNames.filter(sample => this.sampleLibQcLabel(sample) === 'Pass');
+        },
+        failedLibQcSamples() {
+            return this.sampleNames.filter(sample => this.sampleLibQcLabel(sample) === 'Fail');
         },
         countLabel() {
             return this.isHiseqX ? 'Clusters' : 'Reads';
@@ -224,6 +245,26 @@ const vReadsTotalComponent = {
             }
             return 'table-warning';
         },
+        sampleLibQcLabel(sample) {
+            const value = this.summaryRowLibQcMap[sample];
+            if (value === true || value === 'True' || value === 'true') {
+                return 'Pass';
+            }
+            if (value === false || value === 'False' || value === 'false') {
+                return 'Fail';
+            }
+            return '-';
+        },
+        sampleLibQcBadgeClass(sample) {
+            const value = this.summaryRowLibQcMap[sample];
+            if (value === true || value === 'True' || value === 'true') {
+                return 'badge bg-success rounded-pill';
+            }
+            if (value === false || value === 'False' || value === 'false') {
+                return 'badge bg-danger rounded-pill';
+            }
+            return 'badge bg-secondary rounded-pill';
+        },
         fcpFlowcellUrl(fcp) {
             const parts = fcp.split('_');
             const lastPart = parts[parts.length - 1].split(':')[0];
@@ -267,6 +308,19 @@ const vReadsTotalComponent = {
             const isChecked = event.target.checked;
             (this.readsData[sample] || []).forEach(d => {
                 this.checkedState[`${sample}_${d.fcp}`] = isChecked;
+            });
+        },
+        areSamplesFullyChecked(samples) {
+            if (samples.length === 0) return false;
+            return samples.every(sample => this.isSampleChecked(sample));
+        },
+        toggleSamplesByLibQc(label) {
+            const samples = label === 'Pass' ? this.passedLibQcSamples : this.failedLibQcSamples;
+            const nextValue = !this.areSamplesFullyChecked(samples);
+            samples.forEach(sample => {
+                (this.readsData[sample] || []).forEach(d => {
+                    this.checkedState[`${sample}_${d.fcp}`] = nextValue;
+                });
             });
         },
         formatQ30(value) {
@@ -435,6 +489,24 @@ const vReadsTotalComponent = {
                     <input type="button" class="btn btn-outline-secondary" :value="showBulkFlowcellEditor ? 'Hide bulk flowcell editor' : 'Bulk edit flowcells'" @click="toggleBulkFlowcellEditor"/>
                     <input type="button" class="btn btn-outline-secondary" value="Download main table as TSV" @click="downloadMainTableTSV"/>
                 </div>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-outline-success rounded-pill"
+                        :disabled="passedLibQcSamples.length === 0"
+                        @click="toggleSamplesByLibQc('Pass')"
+                    >
+                        {{ areSamplesFullyChecked(passedLibQcSamples) ? 'Uncheck' : 'Check' }} Pass QC samples
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-outline-danger rounded-pill"
+                        :disabled="failedLibQcSamples.length === 0"
+                        @click="toggleSamplesByLibQc('Fail')"
+                    >
+                        {{ areSamplesFullyChecked(failedLibQcSamples) ? 'Uncheck' : 'Check' }} Fail QC samples
+                    </button>
+                </div>
                 <div v-if="showBulkFlowcellEditor" class="card mb-3">
                     <div class="card-body">
                         <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
@@ -472,7 +544,8 @@ const vReadsTotalComponent = {
                             <tr class="darkth">
                                 <th style="position: sticky; top: 0; z-index: 2;">Include</th>
                                 <th style="position: sticky; top: 0; z-index: 2; cursor: pointer;" @click="setSort('sample')">Sample <span>{{ sortIndicator('sample') }}</span></th>
-                                <th class="text-end" style="position: sticky; top: 0; z-index: 2; font-variant-numeric: tabular-nums;">Flowcells</th>
+                                <th style="position: sticky; top: 0; z-index: 2; cursor: pointer;" @click="setSort('libQc')">Lib. QC <span>{{ sortIndicator('libQc') }}</span></th>
+                                <th class="text-end" style="position: sticky; top: 0; z-index: 2; font-variant-numeric: tabular-nums; cursor: pointer;" @click="setSort('flowcells')">Flowcells <span>{{ sortIndicator('flowcells') }}</span></th>
                                 <th class="text-end" style="position: sticky; top: 0; z-index: 2; font-variant-numeric: tabular-nums; cursor: pointer;" @click="setSort('reads')">{{ countLabel }} (selected) <span>{{ sortIndicator('reads') }}</span></th>
                                 <th class="text-end" style="position: sticky; top: 0; z-index: 2; font-variant-numeric: tabular-nums; cursor: pointer;" @click="setSort('q30')">Average % > q30 (selected) <span>{{ sortIndicator('q30') }}</span></th>
                             </tr>
@@ -496,12 +569,13 @@ const vReadsTotalComponent = {
                                         <span class="me-2" style="display: inline-block; font-size: 1.1rem; transition: transform 0.15s ease;" :style="{ transform: expandedSamples[sample] ? 'rotate(90deg)' : 'rotate(0deg)' }">▶</span>
                                         <a class="text-decoration-none" :href="'/project/' + projectFromSample(sample)" @click.stop>{{ sample }}</a>
                                     </td>
+                                    <td><span :class="sampleLibQcBadgeClass(sample)">{{ sampleLibQcLabel(sample) }}</span></td>
                                     <td class="text-end" style="font-variant-numeric: tabular-nums;">{{ sampleFlowcellCount(sample) }}</td>
                                     <td class="text-end" style="font-variant-numeric: tabular-nums;">{{ summaryRowMap[sample].toLocaleString() }}</td>
                                     <td class="text-end" :class="sampleQ30Class(sample)" style="font-variant-numeric: tabular-nums;">{{ formatQ30(summaryRowQ30Map[sample]) }}</td>
                                 </tr>
                                 <tr v-if="expandedSamples[sample]">
-                                    <td colspan="5" style="padding: 0 0 10px 30px;">
+                                    <td colspan="6" style="padding: 0 0 10px 30px;">
                                         <table class="table table-sm table-hover table-striped mb-0 align-middle">
                                             <thead>
                                                 <tr class="darkth">
