@@ -265,14 +265,10 @@ const vReadsTotalComponent = {
             });
         },
         downloadMainTableTSV() {
-            const rows = [`Sample\tFlowcell\tQ30\tSelected\t${this.countLabel}`];
-            this.sampleNames.forEach(sample => {
-                this.readsData[sample].forEach(d => {
-                    const selected = this.checkedState[`${sample}_${d.fcp}`] ? 'Yes' : 'No';
-                    const q30Value = d.q30 ?? '';
-                    const countValue = d.cl ?? '';
-                    rows.push(`${sample}\t${d.fcp}\t${q30Value}\t${selected}\t${countValue}`);
-                });
+            const rows = ['Sample\tReads\tQ30'];
+            this.summaryRows.forEach(r => {
+                const q30Value = r.avgQ30 === null ? '' : Number(r.avgQ30).toFixed(2);
+                rows.push(`${r.sample}\t${r.checkedReads}\t${q30Value}`);
             });
             const blob = new Blob([rows.join('\n') + '\n'], { type: 'text/tab-separated-values;charset=utf-8' });
             saveAs(blob, `${this.query}_reads_total.tsv`);
