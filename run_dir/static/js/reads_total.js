@@ -111,6 +111,10 @@ const vReadsTotalComponent = {
             if (keys.length === 0) return false;
             return keys.every(key => this.checkedState[key]);
         },
+        areAllSamplesExpanded() {
+            if (this.sampleNames.length === 0) return false;
+            return this.sampleNames.every(sample => this.expandedSamples[sample]);
+        },
         countLabel() {
             return this.isHiseqX ? 'Clusters' : 'Reads';
         },
@@ -264,6 +268,15 @@ const vReadsTotalComponent = {
                 });
             });
         },
+        toggleAllSamplesExpanded() {
+            const nextValue = !this.areAllSamplesExpanded;
+            this.sampleNames.forEach(sample => {
+                this.expandedSamples[sample] = nextValue;
+            });
+        },
+        sampleFlowcellCount(sample) {
+            return (this.readsData[sample] || []).length;
+        },
         downloadMainTableTSV() {
             const rows = ['Sample\tReads\tQ30'];
             this.summaryRows.forEach(r => {
@@ -374,6 +387,7 @@ const vReadsTotalComponent = {
                 <div id="reads_total_summary_chart"></div>
                 <div class="btn-group mb-3" role="group">
                     <input type="button" class="btn btn-outline-secondary" :value="isAllSelected ? 'Uncheck all' : 'Check all'" @click="toggleAllSelection"/>
+                    <input type="button" class="btn btn-outline-secondary" :value="areAllSamplesExpanded ? 'Collapse all' : 'Expand all'" @click="toggleAllSamplesExpanded"/>
                     <input type="button" class="btn btn-outline-secondary" :value="showBulkFlowcellEditor ? 'Hide bulk flowcell editor' : 'Bulk edit flowcells'" @click="toggleBulkFlowcellEditor"/>
                     <input type="button" class="btn btn-outline-secondary" value="Download main table as TSV" @click="downloadMainTableTSV"/>
                 </div>
@@ -409,20 +423,21 @@ const vReadsTotalComponent = {
                     </div>
                 </div>
                 <div class="container-fluid">
-                    <table class="table reads_table">
+                    <table class="table table-hover table-striped align-middle reads_table">
                         <thead>
                             <tr class="darkth">
-                                <th>Include</th>
-                                <th>Sample</th>
-                                <th>{{ countLabel }} (selected)</th>
-                                <th>Average % > q30 (selected)</th>
+                                <th style="position: sticky; top: 0; z-index: 2;">Include</th>
+                                <th style="position: sticky; top: 0; z-index: 2;">Sample</th>
+                                <th class="text-end" style="position: sticky; top: 0; z-index: 2; font-variant-numeric: tabular-nums;">Flowcells</th>
+                                <th class="text-end" style="position: sticky; top: 0; z-index: 2; font-variant-numeric: tabular-nums;">{{ countLabel }} (selected)</th>
+                                <th class="text-end" style="position: sticky; top: 0; z-index: 2; font-variant-numeric: tabular-nums;">Average % > q30 (selected)</th>
                             </tr>
                         </thead>
                         <tbody>
                             <template v-for="sample in sampleNames" :key="sample">
                                 <tr :id="sample" class="sample_table"
                                     :class="{ highlighted: highlightedSample === sample }"
-                                    style="cursor: pointer;"
+                                    style="cursor: pointer; transition: background-color 0.15s ease;"
                                     @click="toggleSampleExpanded(sample)">
                                     <td>
                                         <input
@@ -434,29 +449,30 @@ const vReadsTotalComponent = {
                                         />
                                     </td>
                                     <td>
-                                        <span class="me-2">{{ expandedSamples[sample] ? '▼' : '▶' }}</span>
+                                        <span class="me-2" style="display: inline-block; font-size: 1.1rem; transition: transform 0.15s ease;" :style="{ transform: expandedSamples[sample] ? 'rotate(90deg)' : 'rotate(0deg)' }">▶</span>
                                         <a class="text-decoration-none" :href="'/project/' + projectFromSample(sample)" @click.stop>{{ sample }}</a>
                                     </td>
-                                    <td>{{ summaryRowMap[sample].toLocaleString() }}</td>
-                                    <td>{{ formatQ30(summaryRowQ30Map[sample]) }}</td>
+                                    <td class="text-end" style="font-variant-numeric: tabular-nums;">{{ sampleFlowcellCount(sample) }}</td>
+                                    <td class="text-end" style="font-variant-numeric: tabular-nums;">{{ summaryRowMap[sample].toLocaleString() }}</td>
+                                    <td class="text-end" style="font-variant-numeric: tabular-nums;">{{ formatQ30(summaryRowQ30Map[sample]) }}</td>
                                 </tr>
                                 <tr v-if="expandedSamples[sample]">
-                                    <td colspan="4" style="padding: 0 0 10px 30px;">
-                                        <table class="table table-sm mb-0">
+                                    <td colspan="5" style="padding: 0 0 10px 30px;">
+                                        <table class="table table-sm table-hover table-striped mb-0 align-middle">
                                             <thead>
                                                 <tr class="darkth">
                                                     <th>Include</th>
                                                     <th>Flowcell:Lane</th>
-                                                    <th>{{ countLabel }}</th>
-                                                    <th>% > q30</th>
+                                                    <th class="text-end" style="font-variant-numeric: tabular-nums;">{{ countLabel }}</th>
+                                                    <th class="text-end" style="font-variant-numeric: tabular-nums;">% > q30</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <tr v-for="d in readsData[sample]" :key="d.fcp">
                                                     <td><input type="checkbox" v-model="checkedState[sample + '_' + d.fcp]"/></td>
                                                     <td><a class="text-decoration-none" :href="fcpFlowcellUrl(d.fcp)">{{ d.fcp }}</a></td>
-                                                    <td>{{ d.cl }}</td>
-                                                    <td :class="q30Class(d)">{{ d.q30 }}</td>
+                                                    <td class="text-end" style="font-variant-numeric: tabular-nums;">{{ d.cl }}</td>
+                                                    <td class="text-end" :class="q30Class(d)" style="font-variant-numeric: tabular-nums;">{{ d.q30 }}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -468,8 +484,9 @@ const vReadsTotalComponent = {
                             <tr class="darkth">
                                 <th></th>
                                 <th></th>
-                                <th>Total selected</th>
-                                <th>{{ totalClusters.toLocaleString() }}</th>
+                                <th></th>
+                                <th class="text-end">Total selected</th>
+                                <th class="text-end" style="font-variant-numeric: tabular-nums;">{{ totalClusters.toLocaleString() }}</th>
                             </tr>
                         </tfoot>
                     </table>
