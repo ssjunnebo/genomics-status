@@ -19,6 +19,8 @@ const vReadsTotalComponent = {
             highlightedSample: null,
             checkedState: {},
             expandedSamples: {},
+            sortKey: 'sample',
+            sortDirection: 'asc',
             chartInstance: null,
             loading: true,
             error: null,
@@ -64,6 +66,28 @@ const vReadsTotalComponent = {
             const map = {};
             this.summaryRows.forEach(r => { map[r.sample] = r.avgQ30; });
             return map;
+        },
+        sortedSampleNames() {
+            const direction = this.sortDirection === 'asc' ? 1 : -1;
+            return [...this.sampleNames].sort((leftSample, rightSample) => {
+                let leftValue;
+                let rightValue;
+
+                if (this.sortKey === 'reads') {
+                    leftValue = this.summaryRowMap[leftSample] || 0;
+                    rightValue = this.summaryRowMap[rightSample] || 0;
+                } else if (this.sortKey === 'q30') {
+                    leftValue = this.summaryRowQ30Map[leftSample] ?? -1;
+                    rightValue = this.summaryRowQ30Map[rightSample] ?? -1;
+                } else {
+                    leftValue = leftSample;
+                    rightValue = rightSample;
+                }
+
+                if (leftValue < rightValue) return -1 * direction;
+                if (leftValue > rightValue) return 1 * direction;
+                return leftSample.localeCompare(rightSample);
+            });
         },
         allFlowcellIds() {
             const ids = new Set();
@@ -277,6 +301,18 @@ const vReadsTotalComponent = {
         sampleFlowcellCount(sample) {
             return (this.readsData[sample] || []).length;
         },
+        setSort(key) {
+            if (this.sortKey === key) {
+                this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+                return;
+            }
+            this.sortKey = key;
+            this.sortDirection = key === 'sample' ? 'asc' : 'desc';
+        },
+        sortIndicator(key) {
+            if (this.sortKey !== key) return '';
+            return this.sortDirection === 'asc' ? '▲' : '▼';
+        },
         downloadMainTableTSV() {
             const rows = ['Sample\tReads\tQ30'];
             this.summaryRows.forEach(r => {
@@ -427,14 +463,14 @@ const vReadsTotalComponent = {
                         <thead>
                             <tr class="darkth">
                                 <th style="position: sticky; top: 0; z-index: 2;">Include</th>
-                                <th style="position: sticky; top: 0; z-index: 2;">Sample</th>
+                                <th style="position: sticky; top: 0; z-index: 2; cursor: pointer;" @click="setSort('sample')">Sample <span>{{ sortIndicator('sample') }}</span></th>
                                 <th class="text-end" style="position: sticky; top: 0; z-index: 2; font-variant-numeric: tabular-nums;">Flowcells</th>
-                                <th class="text-end" style="position: sticky; top: 0; z-index: 2; font-variant-numeric: tabular-nums;">{{ countLabel }} (selected)</th>
-                                <th class="text-end" style="position: sticky; top: 0; z-index: 2; font-variant-numeric: tabular-nums;">Average % > q30 (selected)</th>
+                                <th class="text-end" style="position: sticky; top: 0; z-index: 2; font-variant-numeric: tabular-nums; cursor: pointer;" @click="setSort('reads')">{{ countLabel }} (selected) <span>{{ sortIndicator('reads') }}</span></th>
+                                <th class="text-end" style="position: sticky; top: 0; z-index: 2; font-variant-numeric: tabular-nums; cursor: pointer;" @click="setSort('q30')">Average % > q30 (selected) <span>{{ sortIndicator('q30') }}</span></th>
                             </tr>
                         </thead>
                         <tbody>
-                            <template v-for="sample in sampleNames" :key="sample">
+                            <template v-for="sample in sortedSampleNames" :key="sample">
                                 <tr :id="sample" class="sample_table"
                                     :class="{ highlighted: highlightedSample === sample }"
                                     style="cursor: pointer; transition: background-color 0.15s ease;"
