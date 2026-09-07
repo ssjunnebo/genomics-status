@@ -16,6 +16,7 @@ const vReadsTotalComponent = {
             checkKeyFilter: '',
             highlightedSample: null,
             checkedState: {},
+            expandedSamples: {},
             chartInstance: null,
             loading: true,
             error: null,
@@ -29,39 +30,41 @@ const vReadsTotalComponent = {
         sampleNames() {
             return Object.keys(this.readsData).filter(k => k !== 'isHiseqX');
         },
-        sampleChunks() {
-            const chunks = [];
-            for (let i = 0; i < this.sampleNames.length; i += 2) {
-                chunks.push(this.sampleNames.slice(i, i + 2));
-            }
-            return chunks;
-        },
         summaryRows() {
             return this.sampleNames.map(sample => {
-                let checked = 0, unchecked = 0, w_q30_sum = 0;
+                let checkedReads = 0, uncheckedReads = 0, q30Sum = 0, checkedQ30Count = 0;
                 const rows = this.readsData[sample];
                 rows.forEach(d => {
                     const count = parseInt(d.cl) || 0;
                     if (this.checkedState[`${sample}_${d.fcp}`]) {
-                        w_q30_sum += (parseFloat(d.q30) || 0) * count;
-                        checked += count;
+                        checkedReads += count;
+                        const q30 = parseFloat(d.q30);
+                        if (!Number.isNaN(q30)) {
+                            q30Sum += q30;
+                            checkedQ30Count += 1;
+                        }
                     } else {
-                        unchecked += count;
+                        uncheckedReads += count;
                     }
                 });
-                const w_q30 = checked > 0 ? w_q30_sum / checked : -1;
+                const avgQ30 = checkedQ30Count > 0 ? q30Sum / checkedQ30Count : null;
                 const firstRow = rows.find(d => d.run_mode != null) || rows[0];
                 const threshold = firstRow ? this.getRowThreshold(firstRow) : 85.0;
-                return { sample, checked, unchecked, w_q30, threshold };
+                return { sample, checkedReads, uncheckedReads, avgQ30, threshold };
             });
         },
         summaryRowMap() {
             const map = {};
-            this.summaryRows.forEach(r => { map[r.sample] = r.checked; });
+            this.summaryRows.forEach(r => { map[r.sample] = r.checkedReads; });
+            return map;
+        },
+        summaryRowQ30Map() {
+            const map = {};
+            this.summaryRows.forEach(r => { map[r.sample] = r.avgQ30; });
             return map;
         },
         totalClusters() {
-            return this.summaryRows.reduce((sum, r) => sum + r.checked, 0);
+            return this.summaryRows.reduce((sum, r) => sum + r.checkedReads, 0);
         },
         countLabel() {
             return this.isHiseqX ? 'Clusters' : 'Reads';
@@ -97,6 +100,10 @@ const vReadsTotalComponent = {
                             this.checkedState[`${sample}_${d.fcp}`] = this.isRowInitiallyChecked(d);
                         }
                     }
+                    this.expandedSamples = {};
+                    this.sampleNames.forEach(sample => {
+                        this.expandedSamples[sample] = false;
+                    });
                     
                     this.loading = false;
                     this.$nextTick(() => this.renderChart());
@@ -155,6 +162,7 @@ const vReadsTotalComponent = {
         },
         highlightSample(sample) {
             this.highlightedSample = sample;
+            this.expandedSamples[sample] = true;
             this.$nextTick(() => {
                 const el = document.getElementById(sample);
                 if (el) {
@@ -162,6 +170,30 @@ const vReadsTotalComponent = {
                     location.hash = '#' + sample;
                 }
             });
+        },
+        toggleSampleExpanded(sample) {
+            this.expandedSamples[sample] = !this.expandedSamples[sample];
+        },
+        isSampleChecked(sample) {
+            const rows = this.readsData[sample] || [];
+            if (rows.length === 0) return false;
+            return rows.every(d => this.checkedState[`${sample}_${d.fcp}`]);
+        },
+        isSampleIndeterminate(sample) {
+            const rows = this.readsData[sample] || [];
+            if (rows.length === 0) return false;
+            const selectedCount = rows.filter(d => this.checkedState[`${sample}_${d.fcp}`]).length;
+            return selectedCount > 0 && selectedCount < rows.length;
+        },
+        onSampleCheckboxChange(sample, event) {
+            const isChecked = event.target.checked;
+            (this.readsData[sample] || []).forEach(d => {
+                this.checkedState[`${sample}_${d.fcp}`] = isChecked;
+            });
+        },
+        formatQ30(value) {
+            if (value === null || value === undefined) return '-';
+            return Number(value).toFixed(2);
         },
         downloadMainTableTSV() {
             const rows = [`Sample\tFlowcell\tQ30\tSelected\t${this.countLabel}`];
@@ -197,14 +229,14 @@ const vReadsTotalComponent = {
                 { name: 'Not Selected',  data: [], color: '#dddddd' }
             ];
             this.summaryRows.forEach(r => {
-                if (r.w_q30 >= r.threshold) {
-                    seriesData[0].data.push(r.checked);
+                if (r.avgQ30 !== null && r.avgQ30 >= r.threshold) {
+                    seriesData[0].data.push(r.checkedReads);
                     seriesData[1].data.push(0);
                 } else {
                     seriesData[0].data.push(0);
-                    seriesData[1].data.push(r.checked);
+                    seriesData[1].data.push(r.checkedReads);
                 }
-                seriesData[2].data.push(r.unchecked);
+                seriesData[2].data.push(r.uncheckedReads);
             });
             this.chartInstance = Highcharts.chart('reads_total_summary_chart', {
                 credits: { enabled: false },
@@ -214,7 +246,7 @@ const vReadsTotalComponent = {
                 xAxis: { categories: sampleNames },
                 yAxis: {
                     min: 0,
-                    title: { text: '# Clusters' },
+                    title: { text: '# ' + this.countLabel },
                     reversedStacks: false
                 },
                 plotOptions: {
@@ -282,41 +314,70 @@ const vReadsTotalComponent = {
                     <input type="text" class="form-control" v-model="checkKeyFilter"/>
                 </div>
                 <div class="container-fluid">
-                    <template v-for="(chunk, idx) in sampleChunks" :key="idx">
-                        <hr>
-                        <div class="row">
-                            <div v-for="sample in chunk" :key="sample" :id="sample"
-                                 class="col-lg-6 sample_table" :class="{ highlighted: highlightedSample === sample }"
-                                 style="padding-top: 15px;">
-                                <table class="table reads_table">
-                                    <thead>
-                                        <tr class="darkth">
-                                            <th><a class="text-decoration-none" :href="'/project/' + projectFromSample(sample)">{{ sample }}</a></th>
-                                            <th>% > q30</th>
-                                            <th>Add</th>
-                                            <th>{{ countLabel }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="d in readsData[sample]" :key="d.fcp">
-                                            <td><a class="text-decoration-none" :href="fcpFlowcellUrl(d.fcp)">{{ d.fcp }}</a></td>
-                                            <td :class="q30Class(d)">{{ d.q30 }}</td>
-                                            <td><input type="checkbox" v-model="checkedState[sample + '_' + d.fcp]"/></td>
-                                            <td>{{ d.cl }}</td>
-                                        </tr>
-                                    </tbody>
-                                    <tfoot>
-                                        <tr class="darkth">
-                                            <th>Total</th>
-                                            <th></th>
-                                            <th>{{ sample }}</th>
-                                            <th>{{ summaryRowMap[sample].toLocaleString() }}</th>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-                    </template>
+                    <table class="table reads_table">
+                        <thead>
+                            <tr class="darkth">
+                                <th>Sample</th>
+                                <th>Average % > q30 (selected)</th>
+                                <th>Add</th>
+                                <th>{{ countLabel }} (selected)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template v-for="sample in sampleNames" :key="sample">
+                                <tr :id="sample" class="sample_table"
+                                    :class="{ highlighted: highlightedSample === sample }"
+                                    style="cursor: pointer;"
+                                    @click="toggleSampleExpanded(sample)">
+                                    <td>
+                                        <span class="me-2">{{ expandedSamples[sample] ? '▼' : '▶' }}</span>
+                                        <a class="text-decoration-none" :href="'/project/' + projectFromSample(sample)" @click.stop>{{ sample }}</a>
+                                    </td>
+                                    <td>{{ formatQ30(summaryRowQ30Map[sample]) }}</td>
+                                    <td>
+                                        <input
+                                            type="checkbox"
+                                            :checked="isSampleChecked(sample)"
+                                            :indeterminate.prop="isSampleIndeterminate(sample)"
+                                            @click.stop
+                                            @change="onSampleCheckboxChange(sample, $event)"
+                                        />
+                                    </td>
+                                    <td>{{ summaryRowMap[sample].toLocaleString() }}</td>
+                                </tr>
+                                <tr v-if="expandedSamples[sample]">
+                                    <td colspan="4" style="padding: 0 0 10px 30px;">
+                                        <table class="table table-sm mb-0">
+                                            <thead>
+                                                <tr class="darkth">
+                                                    <th>Flowcell/Lane</th>
+                                                    <th>% > q30</th>
+                                                    <th>Add</th>
+                                                    <th>{{ countLabel }}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="d in readsData[sample]" :key="d.fcp">
+                                                    <td><a class="text-decoration-none" :href="fcpFlowcellUrl(d.fcp)">{{ d.fcp }}</a></td>
+                                                    <td :class="q30Class(d)">{{ d.q30 }}</td>
+                                                    <td><input type="checkbox" v-model="checkedState[sample + '_' + d.fcp]"/></td>
+                                                    <td>{{ d.cl }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                        <tfoot>
+                            <tr class="darkth">
+                                <th>Total selected</th>
+                                <th></th>
+                                <th></th>
+                                <th>{{ totalClusters.toLocaleString() }}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
             </div>
         </template>
