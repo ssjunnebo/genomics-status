@@ -216,6 +216,14 @@ const vReadsTotalComponent = {
             }
             return 'table-warning';
         },
+        sampleQ30Class(sample) {
+            const row = this.summaryRows.find(r => r.sample === sample);
+            if (!row || row.avgQ30 === null) return '';
+            if (row.avgQ30 >= row.threshold) {
+                return 'table-success';
+            }
+            return 'table-warning';
+        },
         fcpFlowcellUrl(fcp) {
             const parts = fcp.split('_');
             const lastPart = parts[parts.length - 1].split(':')[0];
@@ -490,7 +498,7 @@ const vReadsTotalComponent = {
                                     </td>
                                     <td class="text-end" style="font-variant-numeric: tabular-nums;">{{ sampleFlowcellCount(sample) }}</td>
                                     <td class="text-end" style="font-variant-numeric: tabular-nums;">{{ summaryRowMap[sample].toLocaleString() }}</td>
-                                    <td class="text-end" style="font-variant-numeric: tabular-nums;">{{ formatQ30(summaryRowQ30Map[sample]) }}</td>
+                                    <td class="text-end" :class="sampleQ30Class(sample)" style="font-variant-numeric: tabular-nums;">{{ formatQ30(summaryRowQ30Map[sample]) }}</td>
                                 </tr>
                                 <tr v-if="expandedSamples[sample]">
                                     <td colspan="5" style="padding: 0 0 10px 30px;">
