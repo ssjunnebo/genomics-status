@@ -812,8 +812,12 @@ class ReadsTotalDataHandler(SafeHandler):
     def get(self, query):
         if not query:
             data = {}
+            expected_min_yield_per_sample = None
         else:
             data = self.get_total_reads(self.application, query)
+            expected_min_yield_per_sample = self.get_expected_min_yield_per_sample(
+                self.application, list(data.keys())
+            )
 
         # Check if any data is HiSeq X to mark in response
         is_hiseq_x = False
@@ -824,6 +828,7 @@ class ReadsTotalDataHandler(SafeHandler):
                     break
 
         data["isHiseqX"] = is_hiseq_x
+        data["expectedMinYieldPerSample"] = expected_min_yield_per_sample
 
         self.set_header("Content-type", "application/json")
         self.write(json.dumps(data))
@@ -923,6 +928,62 @@ class ReadsTotalDataHandler(SafeHandler):
             return sample_data["details"]["passed_library_qc"]
 
         return "-"
+
+    @staticmethod
+    def _parse_units_ordered(value):
+        if isinstance(value, (int, float)):
+            return float(value)
+
+        if isinstance(value, str):
+            normalized = value.strip().replace(",", ".")
+            if not normalized:
+                return None
+            try:
+                return float(normalized)
+            except ValueError:
+                return None
+
+        return None
+
+    @staticmethod
+    def get_expected_min_yield_per_sample(app, sample_names):
+        project_ids = {sample.split("_")[0] for sample in sample_names if "_" in sample}
+        if len(project_ids) != 1:
+            return None
+
+        project_id = next(iter(project_ids))
+
+        project_rows = app.cloudant.post_view(
+            db="projects",
+            ddoc="project",
+            view="project_id",
+            key=project_id,
+            include_docs=True,
+        ).get_result()["rows"]
+        if not project_rows:
+            return None
+
+        details = project_rows[0].get("doc", {}).get("details", {})
+        units_ordered = ReadsTotalDataHandler._parse_units_ordered(
+            details.get("sequence_units_ordered_(lanes)")
+        )
+        if units_ordered is None:
+            return None
+
+        sample_rows = app.cloudant.post_view(
+            db="projects",
+            ddoc="project",
+            view="samples",
+            key=project_id,
+        ).get_result()["rows"]
+        if not sample_rows:
+            return None
+
+        total_samples = len(sample_rows[0].get("value") or {})
+        if total_samples == 0:
+            return None
+
+        return units_ordered * 600_000_000 * 0.9 / total_samples * 0.75
 
 
 # Functions

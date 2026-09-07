@@ -13,6 +13,7 @@ const vReadsTotalComponent = {
             },
             readsData: {},
             isHiseqX: false,
+            expectedMinYieldPerSample: null,
             showBulkFlowcellEditor: false,
             bulkFlowcellSearch: '',
             bulkSelectedFlowcells: {},
@@ -32,7 +33,7 @@ const vReadsTotalComponent = {
             return this.sampleNames.length > 0;
         },
         sampleNames() {
-            return Object.keys(this.readsData).filter(k => k !== 'isHiseqX');
+            return Object.keys(this.readsData).filter(k => Array.isArray(this.readsData[k]));
         },
         summaryRows() {
             return this.sampleNames.map(sample => {
@@ -184,7 +185,9 @@ const vReadsTotalComponent = {
                 .then(response => {
                     const data = response.data;
                     this.isHiseqX = data.isHiseqX || false;
+                    this.expectedMinYieldPerSample = data.expectedMinYieldPerSample ?? null;
                     delete data.isHiseqX;
+                    delete data.expectedMinYieldPerSample;
                     this.readsData = data;
                     
                     // Initialize checkbox state
@@ -423,7 +426,19 @@ const vReadsTotalComponent = {
                 yAxis: {
                     min: 0,
                     title: { text: '# ' + this.countLabel },
-                    reversedStacks: false
+                    reversedStacks: false,
+                    plotLines: this.expectedMinYieldPerSample !== null ? [{
+                        color: '#fd0d0d',
+                        dashStyle: 'ShortDash',
+                        value: this.expectedMinYieldPerSample,
+                        width: 2,
+                        zIndex: 5,
+                        label: {
+                            text: 'Expected minimum yield / sample',
+                            align: 'right',
+                            style: { color: '#fd0d0d' }
+                        }
+                    }] : []
                 },
                 plotOptions: {
                     column: { stacking: 'normal', borderWidth: 0, groupPadding: 0.1 },
