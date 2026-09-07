@@ -607,7 +607,7 @@ const vReadsTotalComponent = {
                                                 <tr v-for="d in readsData[sample]" :key="d.fcp">
                                                     <td><input type="checkbox" v-model="checkedState[sample + '_' + d.fcp]"/></td>
                                                     <td><a class="text-decoration-none" :href="fcpFlowcellUrl(d.fcp)">{{ d.fcp }}</a></td>
-                                                    <td class="text-end" style="font-variant-numeric: tabular-nums;">{{ d.cl }}</td>
+                                                    <td class="text-end" style="font-variant-numeric: tabular-nums;">{{ Number(d.cl).toLocaleString() }}</td>
                                                     <td class="text-end" :class="q30Class(d)" style="font-variant-numeric: tabular-nums;">{{ d.q30 }}</td>
                                                 </tr>
                                             </tbody>
