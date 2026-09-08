@@ -809,6 +809,10 @@ class ReadsTotalDataHandler(SafeHandler):
     Returns JSON with reads data for the given query
     """
 
+    UNIT_YIELD = 600_000_000
+    FLOWCELL_YIELD_FACTOR = 0.9
+    SAMPLE_YIELD_FACTOR = 0.75
+
     def get(self, query):
         if not query:
             data = {}
@@ -820,12 +824,11 @@ class ReadsTotalDataHandler(SafeHandler):
             )
 
         # Check if any data is HiSeq X to mark in response
-        is_hiseq_x = False
-        for sample_rows in data.values():
-            for row in sample_rows:
-                if row.get("run_mode") == "HiSeq X":
-                    is_hiseq_x = True
-                    break
+        is_hiseq_x = any(
+            row.get("run_mode") == "HiSeq X"
+            for sample_rows in data.values()
+            for row in sample_rows
+        )
 
         data["isHiseqX"] = is_hiseq_x
         data["expectedMinYieldPerSample"] = expected_min_yield_per_sample
@@ -839,16 +842,13 @@ class ReadsTotalDataHandler(SafeHandler):
         ordereddata = OrderedDict()
 
         # Get all flowcell info at once instead of per-row
-        fc_info_cache = {}
         fc_info_view = app.cloudant.post_view(
             db="x_flowcells",
             ddoc="info",
             view="summary",
             descending=True,
         ).get_result()["rows"]
-
-        for row in fc_info_view:
-            fc_info_cache[row["key"]] = row["value"]
+        fc_info_cache = {row["key"]: row["value"] for row in fc_info_view}
 
         xfc_view = app.cloudant.post_view(
             db="x_flowcells",
@@ -888,7 +888,12 @@ class ReadsTotalDataHandler(SafeHandler):
                         fcl["sample_status"] = row["value"]["sample_status"]
                         break  # since the row is already found
 
-        project_ids = {sample.split("_")[0] for sample in data.keys() if "_" in sample}
+        project_ids = {
+            project_id
+            for sample in data.keys()
+            for project_id in [ReadsTotalDataHandler._project_id_from_sample(sample)]
+            if project_id
+        }
         if project_ids:
             sample_view_rows = app.cloudant.post_view(
                 db="projects",
@@ -902,7 +907,9 @@ class ReadsTotalDataHandler(SafeHandler):
             }
 
             for sample_name, sample_rows in data.items():
-                project_id = sample_name.split("_")[0]
+                project_id = ReadsTotalDataHandler._project_id_from_sample(sample_name)
+                if not project_id:
+                    continue
                 sample_data = samples_by_project.get(project_id, {}).get(
                     sample_name, {}
                 )
@@ -946,8 +953,19 @@ class ReadsTotalDataHandler(SafeHandler):
         return None
 
     @staticmethod
+    def _project_id_from_sample(sample_name):
+        if "_" not in sample_name:
+            return None
+        return sample_name.split("_", 1)[0]
+
+    @staticmethod
     def get_expected_min_yield_per_sample(app, sample_names):
-        project_ids = {sample.split("_")[0] for sample in sample_names if "_" in sample}
+        project_ids = {
+            project_id
+            for sample in sample_names
+            for project_id in [ReadsTotalDataHandler._project_id_from_sample(sample)]
+            if project_id
+        }
         if len(project_ids) != 1:
             return None
 
@@ -983,7 +1001,13 @@ class ReadsTotalDataHandler(SafeHandler):
         if total_samples == 0:
             return None
 
-        return units_ordered * 600_000_000 * 0.9 / total_samples * 0.75
+        return (
+            units_ordered
+            * ReadsTotalDataHandler.UNIT_YIELD
+            * ReadsTotalDataHandler.FLOWCELL_YIELD_FACTOR
+            / total_samples
+            * ReadsTotalDataHandler.SAMPLE_YIELD_FACTOR
+        )
 
 
 # Functions

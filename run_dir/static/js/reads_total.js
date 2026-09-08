@@ -40,8 +40,8 @@ const vReadsTotalComponent = {
                 let checkedReads = 0, uncheckedReads = 0, q30Sum = 0, checkedQ30Count = 0;
                 const rows = this.readsData[sample];
                 rows.forEach(d => {
-                    const count = parseInt(d.cl) || 0;
-                    if (this.checkedState[`${sample}_${d.fcp}`]) {
+                    const count = Number.parseInt(d.cl, 10) || 0;
+                    if (this.checkedState[this.selectionKey(sample, d.fcp)]) {
                         checkedReads += count;
                         const q30 = parseFloat(d.q30);
                         if (!Number.isNaN(q30)) {
@@ -249,7 +249,19 @@ const vReadsTotalComponent = {
             return 'table-warning';
         },
         sampleLibQcLabel(sample) {
-            const value = this.summaryRowLibQcMap[sample];
+            return this.normalizedLibQcLabel(this.summaryRowLibQcMap[sample]);
+        },
+        sampleLibQcBadgeClass(sample) {
+            const label = this.sampleLibQcLabel(sample);
+            if (label === 'Pass') {
+                return 'badge bg-success rounded-pill';
+            }
+            if (label === 'Fail') {
+                return 'badge bg-danger rounded-pill';
+            }
+            return 'badge bg-secondary rounded-pill';
+        },
+        normalizedLibQcLabel(value) {
             if (value === true || value === 'True' || value === 'true') {
                 return 'Pass';
             }
@@ -258,23 +270,16 @@ const vReadsTotalComponent = {
             }
             return '-';
         },
-        sampleLibQcBadgeClass(sample) {
-            const value = this.summaryRowLibQcMap[sample];
-            if (value === true || value === 'True' || value === 'true') {
-                return 'badge bg-success rounded-pill';
-            }
-            if (value === false || value === 'False' || value === 'false') {
-                return 'badge bg-danger rounded-pill';
-            }
-            return 'badge bg-secondary rounded-pill';
+        sampleRows(sample) {
+            return this.readsData[sample] || [];
+        },
+        selectionKey(sample, fcp) {
+            return `${sample}_${fcp}`;
         },
         fcpFlowcellUrl(fcp) {
             const parts = fcp.split('_');
             const lastPart = parts[parts.length - 1].split(':')[0];
             return `/flowcells/${parts[0]}_${lastPart}`;
-        },
-        projectFromSample(sample) {
-            return sample.split('_')[0];
         },
         toggleAllSelection() {
             const nextValue = !this.isAllSelected;
@@ -297,20 +302,20 @@ const vReadsTotalComponent = {
             this.expandedSamples[sample] = !this.expandedSamples[sample];
         },
         isSampleChecked(sample) {
-            const rows = this.readsData[sample] || [];
+            const rows = this.sampleRows(sample);
             if (rows.length === 0) return false;
-            return rows.every(d => this.checkedState[`${sample}_${d.fcp}`]);
+            return rows.every(d => this.checkedState[this.selectionKey(sample, d.fcp)]);
         },
         isSampleIndeterminate(sample) {
-            const rows = this.readsData[sample] || [];
+            const rows = this.sampleRows(sample);
             if (rows.length === 0) return false;
-            const selectedCount = rows.filter(d => this.checkedState[`${sample}_${d.fcp}`]).length;
+            const selectedCount = rows.filter(d => this.checkedState[this.selectionKey(sample, d.fcp)]).length;
             return selectedCount > 0 && selectedCount < rows.length;
         },
         onSampleCheckboxChange(sample, event) {
             const isChecked = event.target.checked;
-            (this.readsData[sample] || []).forEach(d => {
-                this.checkedState[`${sample}_${d.fcp}`] = isChecked;
+            this.sampleRows(sample).forEach(d => {
+                this.checkedState[this.selectionKey(sample, d.fcp)] = isChecked;
             });
         },
         areSamplesFullyChecked(samples) {
@@ -321,8 +326,8 @@ const vReadsTotalComponent = {
             const samples = label === 'Pass' ? this.passedLibQcSamples : this.failedLibQcSamples;
             const nextValue = !this.areSamplesFullyChecked(samples);
             samples.forEach(sample => {
-                (this.readsData[sample] || []).forEach(d => {
-                    this.checkedState[`${sample}_${d.fcp}`] = nextValue;
+                this.sampleRows(sample).forEach(d => {
+                    this.checkedState[this.selectionKey(sample, d.fcp)] = nextValue;
                 });
             });
         },
@@ -350,9 +355,9 @@ const vReadsTotalComponent = {
             const selectedSet = this.selectedFlowcellIdSet;
             if (selectedSet.size === 0) return;
             this.sampleNames.forEach(sample => {
-                (this.readsData[sample] || []).forEach(d => {
+                this.sampleRows(sample).forEach(d => {
                     if (selectedSet.has(d.fcp)) {
-                        this.checkedState[`${sample}_${d.fcp}`] = isChecked;
+                        this.checkedState[this.selectionKey(sample, d.fcp)] = isChecked;
                     }
                 });
             });
@@ -604,8 +609,8 @@ const vReadsTotalComponent = {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <tr v-for="d in readsData[sample]" :key="d.fcp">
-                                                    <td><input type="checkbox" v-model="checkedState[sample + '_' + d.fcp]"/></td>
+                                                <tr v-for="d in sampleRows(sample)" :key="d.fcp">
+                                                    <td><input type="checkbox" v-model="checkedState[selectionKey(sample, d.fcp)]"/></td>
                                                     <td><a class="text-decoration-none" :href="fcpFlowcellUrl(d.fcp)">{{ d.fcp }}</a></td>
                                                     <td class="text-end" style="font-variant-numeric: tabular-nums;">{{ Number(d.cl).toLocaleString() }}</td>
                                                     <td class="text-end" :class="q30Class(d)" style="font-variant-numeric: tabular-nums;">{{ d.q30 }}</td>
