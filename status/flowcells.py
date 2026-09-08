@@ -890,36 +890,23 @@ class ReadsTotalDataHandler(SafeHandler):
                         fcl["sample_status"] = row["value"]["sample_status"]
                         break  # since the row is already found
 
-        project_ids = {
-            project_id
-            for sample in data.keys()
-            for project_id in [ReadsTotalDataHandler._project_id_from_sample(sample)]
-            if project_id
+        sample_view_rows = app.cloudant.post_view(
+            db="projects",
+            ddoc="project",
+            view="samples",
+            key=query,
+        ).get_result()["rows"]
+
+        samples_by_project = {
+            row["key"]: row.get("value") or {} for row in sample_view_rows
         }
-        if project_ids:
-            sample_view_rows = app.cloudant.post_view(
-                db="projects",
-                ddoc="project",
-                view="samples",
-                keys=list(project_ids),
-            ).get_result()["rows"]
+        project_sample_data = samples_by_project.get(query, {})
 
-            samples_by_project = {
-                row["key"]: row.get("value") or {} for row in sample_view_rows
-            }
-
-            for sample_name, sample_rows in data.items():
-                project_id = ReadsTotalDataHandler._project_id_from_sample(sample_name)
-                if not project_id:
-                    continue
-                sample_data = samples_by_project.get(project_id, {}).get(
-                    sample_name, {}
-                )
-                lib_qc_status = ReadsTotalDataHandler._sample_passed_library_qc(
-                    sample_data
-                )
-                for sample_row in sample_rows:
-                    sample_row["lib_qc"] = lib_qc_status
+        for sample_name, sample_rows in data.items():
+            sample_data = project_sample_data.get(sample_name, {})
+            lib_qc_status = ReadsTotalDataHandler._sample_passed_library_qc(sample_data)
+            for sample_row in sample_rows:
+                sample_row["lib_qc"] = lib_qc_status
 
         for key in sorted(data.keys()):
             ordereddata[key] = sorted(data[key], key=lambda d: d["fcp"])
@@ -955,23 +942,11 @@ class ReadsTotalDataHandler(SafeHandler):
         return None
 
     @staticmethod
-    def _project_id_from_sample(sample_name):
-        if "_" not in sample_name:
-            return None
-        return sample_name.split("_", 1)[0]
-
-    @staticmethod
     def get_expected_min_yield_per_sample(app, sample_names):
-        project_ids = {
-            project_id
-            for sample in sample_names
-            for project_id in [ReadsTotalDataHandler._project_id_from_sample(sample)]
-            if project_id
-        }
-        if len(project_ids) != 1:
+        if not sample_names:
             return None
 
-        project_id = next(iter(project_ids))
+        project_id = sample_names[0].split("_", 1)[0]
 
         project_rows = app.cloudant.post_view(
             db="projects",
