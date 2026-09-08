@@ -840,6 +840,8 @@ class ReadsTotalDataHandler(SafeHandler):
     def get_total_reads(app, query):
         data = {}
         ordereddata = OrderedDict()
+        sample_start_key = f"{query}_"
+        sample_end_key = f"{query}_Z"
 
         # Get all flowcell info at once instead of per-row
         fc_info_view = app.cloudant.post_view(
@@ -854,8 +856,8 @@ class ReadsTotalDataHandler(SafeHandler):
             db="x_flowcells",
             ddoc="samples",
             view="lane_clusters",
-            start_key=query,
-            end_key=f"{query}Z",
+            start_key=sample_start_key,
+            end_key=sample_end_key,
             reduce=False,
         ).get_result()["rows"]
 
@@ -878,8 +880,8 @@ class ReadsTotalDataHandler(SafeHandler):
             db="bioinfo_analysis",
             ddoc="latest_data",
             view="sample_id",
-            start_key=[query, None, None, None],
-            end_key=[f"{query}Z", "ZZ", "ZZ", "ZZ"],
+            start_key=[sample_start_key, None, None, None],
+            end_key=[sample_end_key, "ZZ", "ZZ", "ZZ"],
         ).get_result()["rows"]
         for row in bioinfo_view:
             if row["key"][3] in data:

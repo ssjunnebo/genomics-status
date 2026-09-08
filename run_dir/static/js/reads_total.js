@@ -392,14 +392,6 @@ const vReadsTotalComponent = {
             const blob = new Blob([rows.join('\n') + '\n'], { type: 'text/tab-separated-values;charset=utf-8' });
             saveAs(blob, `${this.query}_reads_total.tsv`);
         },
-        submitSearch() {
-            const val = this.$refs.queryInput.value.trim();
-            if (!val) {
-                alert('Error - search term cannot be empty');
-            } else {
-                location.href = '/reads_total/' + val;
-            }
-        },
         renderChart() {
             if (!this.hasData) return;
             if (this.chartInstance) {
@@ -463,20 +455,6 @@ const vReadsTotalComponent = {
     template: /*html*/`
         <div>
             <h1>Read Count Totals: <span>{{ query }}</span></h1>
-            <div id="querybox">
-                <form @submit.prevent="submitSearch">
-                    <div class="form-group">
-                        <label class="fw-bold" for="reads_query">Enter new search term here:</label>
-                        <div class="input-group" style="max-width: 400px;">
-                            <input type="text" class="form-control" id="reads_query" ref="queryInput" placeholder="eg. P1234">
-                            <span class="input-group-btn">
-                                <button class="btn btn-outline-secondary" type="submit">Search</button>
-                            </span>
-                        </div>
-                        <span class="form-text">Page finds any samples whose names begin with the search term.</span>
-                    </div>
-                </form>
-            </div>
         </div>
 
         <template v-if="loading && query">
@@ -489,15 +467,13 @@ const vReadsTotalComponent = {
             <div class="alert alert-danger mt-3">
                 <h4>Error</h4>
                 <p>{{ error }}</p>
-                <p>Please try again with the box above.</p>
+                <p>Please reload the page and try again.</p>
             </div>
         </template>
 
         <template v-else-if="query === ''">
-            <h3 class="mt-3">Welcome to the read count totals page!</h3>
-            <p>To begin, enter a search term above and click <code>Search</code></p>
-            <p>The search works by matching any sample names that begin with your search term. So P123 will match samples <code>P123_001</code> and <code>P1234_003</code></p>
-            <p>Note that sample names do not have full project names such as <code>A.Project_15_03</code>, so these kinds of searches will not work.</p>
+            <h3 class="mt-3">Read totals are now project-scoped.</h3>
+            <p>Open this view from a project page to load read totals for that project.</p>
         </template>
 
         <template v-else-if="hasData">
@@ -638,9 +614,7 @@ const vReadsTotalComponent = {
         <template v-else>
             <div class="alert alert-danger mt-3">
                 <h4>Error - No samples found</h4>
-                <p>Sorry, we weren't able to find any samples matching <code>{{ query }}</code>. Please try again with the box above.</p>
-                <p>The search works by matching any sample names that begin with your search term. So P123 will match samples <code>P123_001</code> and <code>P1234_003</code></p>
-                <p>Note that sample names do not have full project names such as <code>A.Project_15_03</code>, so these kinds of searches will not work.</p>
+                <p>Sorry, we weren't able to find any samples for <code>{{ query }}</code>.</p>
             </div>
         </template>
     `
