@@ -164,6 +164,23 @@ const vReadsTotalComponent = {
         countLabel() {
             return this.isHiseqX ? 'Clusters' : 'Reads';
         },
+        formattedExpectedMinYieldPerSample() {
+            if (this.expectedMinYieldPerSample === null || Number.isNaN(Number(this.expectedMinYieldPerSample))) {
+                return null;
+            }
+            const value = Number(this.expectedMinYieldPerSample);
+            const abs = Math.abs(value);
+            if (abs >= 1_000_000_000) {
+                return `${(value / 1_000_000_000).toFixed(2)}B`;
+            }
+            if (abs >= 1_000_000) {
+                return `${(value / 1_000_000).toFixed(2)}M`;
+            }
+            if (abs >= 1_000) {
+                return `${(value / 1_000).toFixed(2)}k`;
+            }
+            return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value);
+        },
     },
     
     watch: {
@@ -480,7 +497,8 @@ const vReadsTotalComponent = {
             <div>
                 <div id="reads_total_summary_chart"></div>
                 <p v-if="expectedMinYieldPerSample !== null" class="text-muted small mb-3">
-                    Expected minimum yield / sample line = ordered lanes x 600M x 0.9 x 0.75 / number of project samples.
+                    Expected minimum yield / sample threshold: <strong>{{ formattedExpectedMinYieldPerSample }}</strong> reads/sample.
+                    Formula: ordered lanes × 600M × 0.9 × 0.75 / number of project samples.
                 </p>
                 <div class="btn-group mb-3" role="group">
                     <input type="button" class="btn btn-outline-secondary" :value="isAllSelected ? 'Uncheck all' : 'Check all'" @click="toggleAllSelection"/>
