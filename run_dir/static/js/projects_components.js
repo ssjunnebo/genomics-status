@@ -623,7 +623,7 @@ export const vProjectDetails = {
                     </dl>
                 </div>
                 <!-- TABS -->
-                <div class="col-12">
+                <div>
                     <ul class="nav nav-tabs" id="myTab" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active" ref="project-running-notes-pane-btn" @click="switchTab('project-running-notes-pane')" type="button" role="tab" aria-controls="project-running-notes-pane" aria-selected="true">Running Notes</button>
@@ -636,9 +636,6 @@ export const vProjectDetails = {
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" ref="project-user-communication-pane-btn" @click="switchTab('project-user-communication-pane')" type="button" role="tab" aria-controls="project-user-communication-pane" aria-selected="false">User communication</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <a class="nav-link" :href="'/reads_total/' + project_id" target="_blank" rel="noopener noreferrer">Read totals</a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" ref="project-agreements-pane-btn" @click="switchTab('project-agreements-pane')" type="button" role="tab" aria-controls="project-agreements-pane" aria-selected="false">Agreements</button>
