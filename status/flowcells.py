@@ -820,7 +820,7 @@ class ReadsTotalDataHandler(SafeHandler):
         else:
             data = self.get_total_reads(self.application, query)
             expected_min_yield_per_sample = self.get_expected_min_yield_per_sample(
-                self.application, list(data.keys())
+                self.application, query,list(data.keys())
             )
 
         # Check if any data is HiSeq X to mark in response
@@ -939,17 +939,15 @@ class ReadsTotalDataHandler(SafeHandler):
         return None
 
     @staticmethod
-    def get_expected_min_yield_per_sample(app, sample_names):
+    def get_expected_min_yield_per_sample(app, query, sample_names):
         if not sample_names:
             return None
-
-        project_id = sample_names[0].split("_", 1)[0]
 
         project_rows = app.cloudant.post_view(
             db="projects",
             ddoc="project",
             view="project_id",
-            key=project_id,
+            key=query,
             include_docs=True,
         ).get_result()["rows"]
         if not project_rows:
@@ -966,7 +964,7 @@ class ReadsTotalDataHandler(SafeHandler):
             db="projects",
             ddoc="project",
             view="samples",
-            key=project_id,
+            key=query,
         ).get_result()["rows"]
         if not sample_rows:
             return None
