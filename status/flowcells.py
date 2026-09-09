@@ -819,8 +819,20 @@ class ReadsTotalDataHandler(SafeHandler):
             expected_min_yield_per_sample = None
         else:
             data = self.get_total_reads(self.application, query)
+            project_run_mode = None
+            for sample_rows in data.values():
+                for row in sample_rows:
+                    run_mode = row.get("run_mode")
+                    if run_mode:
+                        project_run_mode = run_mode
+                        break
+                if project_run_mode:
+                    break
             expected_min_yield_per_sample = self.get_expected_min_yield_per_sample(
-                self.application, query, list(data.keys())
+                self.application,
+                query,
+                list(data.keys()),
+                project_run_mode=project_run_mode,
             )
 
         # Check if any data is HiSeq X to mark in response
@@ -939,7 +951,9 @@ class ReadsTotalDataHandler(SafeHandler):
         return None
 
     @staticmethod
-    def get_expected_min_yield_per_sample(app, query, sample_names):
+    def get_expected_min_yield_per_sample(
+        app, query, sample_names, project_run_mode=None
+    ):
         if not sample_names:
             return None
 
@@ -955,14 +969,6 @@ class ReadsTotalDataHandler(SafeHandler):
 
         details = project_rows[0].get("doc", {}).get("details", {})
         flowcell_type = str(details.get("flowcell", "")).strip()
-        if not flowcell_type.startswith("Universal-"):
-            return None
-
-        units_ordered = ReadsTotalDataHandler._parse_units_ordered(
-            details.get("sequence_units_ordered_(lanes)")
-        )
-        if units_ordered is None:
-            return None
 
         sample_rows = app.cloudant.post_view(
             db="projects",
@@ -977,9 +983,51 @@ class ReadsTotalDataHandler(SafeHandler):
         if total_samples == 0:
             return None
 
+        if flowcell_type.startswith("Universal-"):
+            units_ordered = ReadsTotalDataHandler._parse_units_ordered(
+                details.get("sequence_units_ordered_(lanes)")
+            )
+            if units_ordered is None:
+                return None
+
+            return (
+                units_ordered
+                * ReadsTotalDataHandler.UNIT_YIELD
+                * ReadsTotalDataHandler.FLOWCELL_YIELD_FACTOR
+                / total_samples
+                * ReadsTotalDataHandler.SAMPLE_YIELD_FACTOR
+            )
+
+        # Prefer the run mode already loaded with the per-sample flowcell rows.
+        run_mode = str(project_run_mode or "").strip()
+        if not run_mode:
+            # Fallback for projects where the run_mode was not attached to the rows.
+            flowcell_name = str(
+                details.get("flowcell_id") or details.get("flowcell") or ""
+            ).strip()
+            if not flowcell_name:
+                return None
+
+            flowcell_rows = app.cloudant.post_view(
+                db="x_flowcells",
+                ddoc="info",
+                view="summary2_full_id",
+                key=flowcell_name,
+            ).get_result()["rows"]
+            if not flowcell_rows:
+                return None
+
+            run_mode = str(
+                flowcell_rows[0].get("value", {}).get("run_mode", "")
+            ).strip()
+
+        lane_threshold = thresholds.get(run_mode, 0)
+        if lane_threshold <= 0:
+            return None
+
         return (
-            units_ordered
-            * ReadsTotalDataHandler.UNIT_YIELD
+            lane_threshold
+            * 1_000_000
             * ReadsTotalDataHandler.FLOWCELL_YIELD_FACTOR
             / total_samples
             * ReadsTotalDataHandler.SAMPLE_YIELD_FACTOR
