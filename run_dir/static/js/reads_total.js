@@ -6,7 +6,7 @@ const vReadsTotalComponent = {
     props: ['query'],
     data() {
         return {
-            THRESHOLD_DICT: {
+            Q30_THRESHOLD_DICT: {
                 'HiSeq X': { 'default': 75.0 },
                 'MiSeq': { '250': 60.0, '150': 70.0, '100': 75.0, 'default': 80.0 },
                 'default': { '250': 60.0, '150': 75.0, '100': 80.0, 'default': 85.0 }
@@ -223,7 +223,7 @@ const vReadsTotalComponent = {
                 else if (d.longer_read_length >= 150) run_setup = '150';
                 else if (d.longer_read_length >= 100) run_setup = '100';
             }
-            return this.THRESHOLD_DICT[run_mode][run_setup];
+            return this.Q30_THRESHOLD_DICT[run_mode][run_setup];
         },
         isRowInitiallyChecked(d) {
             if (d.fcp.includes('_UD')) return false;

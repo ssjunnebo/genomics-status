@@ -917,9 +917,6 @@ class ReadsTotalDataHandler(SafeHandler):
         if not sample_data:
             return "-"
 
-        if "passed_library_qc" in sample_data:
-            return sample_data["passed_library_qc"]
-
         if "details" in sample_data and "passed_library_qc" in sample_data["details"]:
             return sample_data["details"]["passed_library_qc"]
 
