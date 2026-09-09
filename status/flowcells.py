@@ -820,7 +820,7 @@ class ReadsTotalDataHandler(SafeHandler):
         else:
             data = self.get_total_reads(self.application, query)
             expected_min_yield_per_sample = self.get_expected_min_yield_per_sample(
-                self.application, query,list(data.keys())
+                self.application, query, list(data.keys())
             )
 
         # Check if any data is HiSeq X to mark in response
@@ -954,6 +954,10 @@ class ReadsTotalDataHandler(SafeHandler):
             return None
 
         details = project_rows[0].get("doc", {}).get("details", {})
+        flowcell_type = str(details.get("flowcell", "")).strip()
+        if not flowcell_type.startswith("Universal-"):
+            return None
+
         units_ordered = ReadsTotalDataHandler._parse_units_ordered(
             details.get("sequence_units_ordered_(lanes)")
         )
