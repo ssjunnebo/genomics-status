@@ -450,7 +450,7 @@ const vReadsTotalComponent = {
     },
     template: /*html*/`
         <div>
-            <h1>Read Count Totals: <span>{{ query }}</span></h1>
+            <h1>Read Count Totals: <a :href="'/project/' + query" target="_blank" rel="noopener noreferrer" class="text-decoration-none">{{ query }}</a></h1>
         </div>
 
         <template v-if="loading && query">
