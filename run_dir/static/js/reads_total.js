@@ -537,7 +537,7 @@ const vReadsTotalComponent = {
                         <tbody>
                             <template v-for="sample in sortedSampleNames" :key="sample">
                                 <tr :id="sample" class="sample_table"
-                                    :class="{ highlighted: highlightedSample === sample }"
+                                    :class="{ highlighted: highlightedSample === sample, 'table-secondary': !isSampleChecked(sample) }"
                                     style="cursor: pointer; transition: background-color 0.15s ease;"
                                     @click="toggleSampleExpanded(sample)">
                                     <td>
@@ -570,7 +570,7 @@ const vReadsTotalComponent = {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <tr v-for="d in sampleRows(sample)" :key="d.fcp">
+                                                <tr v-for="d in sampleRows(sample)" :key="d.fcp" :class="{ 'table-secondary': !checkedState[selectionKey(sample, d.fcp)] }">
                                                     <td><input type="checkbox" v-model="checkedState[selectionKey(sample, d.fcp)]"/></td>
                                                     <td><a class="text-decoration-none" :href="fcpFlowcellUrl(d.fcp)">{{ d.fcp }}</a></td>
                                                     <td class="text-end" style="font-variant-numeric: tabular-nums;">{{ Number(d.cl).toLocaleString() }}</td>
