@@ -311,7 +311,12 @@ const vReadsTotalComponent = {
             this.$nextTick(() => {
                 const el = document.getElementById(sample);
                 if (el) {
-                    el.scrollIntoView({ behavior: 'smooth' });
+                    const fixedHeader = document.querySelector('nav.navbar.fixed-top');
+                    const headerHeight = fixedHeader ? fixedHeader.getBoundingClientRect().height : 0;
+                    const topGap = 12;
+                    const scrollOffset = headerHeight + topGap;
+                    const targetTop = el.getBoundingClientRect().top + window.pageYOffset - scrollOffset;
+                    window.scrollTo({ top: Math.max(targetTop, 0), behavior: 'smooth' });
                     location.hash = '#' + sample;
                 }
             });
