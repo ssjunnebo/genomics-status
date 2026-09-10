@@ -381,6 +381,21 @@ const vReadsTotalComponent = {
         sampleFlowcellCount(sample) {
             return (this.readsData[sample] || []).length;
         },
+        sampleTotalCount(sample) {
+            return (this.sampleRows(sample) || []).reduce((sum, d) => {
+                return sum + (Number.parseInt(d.cl, 10) || 0);
+            }, 0);
+        },
+        selectSamplesBelowExpectedMinYield() {
+            const threshold = Number(this.expectedMinYieldPerSample);
+            if (Number.isNaN(threshold)) return;
+            this.sampleNames.forEach(sample => {
+                const shouldSelect = this.sampleTotalCount(sample) < threshold;
+                this.sampleRows(sample).forEach(d => {
+                    this.checkedState[this.selectionKey(sample, d.fcp)] = shouldSelect;
+                });
+            });
+        },
         setSort(key) {
             if (this.sortKey === key) {
                 this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -411,7 +426,7 @@ const vReadsTotalComponent = {
             const sampleNames = this.summaryRows.map(r => r.sample);
             const seriesData = [
                 { name: 'q30>threshold', data: [], color: '#78b560' },
-                { name: 'q30<threshold', data: [], color: '#e8cd4c' },
+                { name: 'q30&lt;threshold', data: [], color: '#e8cd4c' },
                 { name: 'Not Selected',  data: [], color: '#dddddd' }
             ];
             this.summaryRows.forEach(r => {
@@ -500,6 +515,7 @@ const vReadsTotalComponent = {
                     <input type="button" class="btn btn-outline-secondary" :value="isAllSelected ? 'Uncheck all' : 'Check all'" @click="toggleAllSelection"/>
                     <input type="button" class="btn btn-outline-secondary" :value="areAllSamplesExpanded ? 'Collapse all' : 'Expand all'" @click="toggleAllSamplesExpanded"/>
                     <input type="button" class="btn btn-outline-secondary" :value="showFlowcellSelection ? 'Hide flowcell selection' : 'Select flowcells'" @click="toggleFlowcellSelection"/>
+                    <input type="button" class="btn btn-outline-warning" value="Select below expected min yield" :disabled="expectedMinYieldPerSample === null" @click="selectSamplesBelowExpectedMinYield"/>
                     <input type="button" class="btn btn-outline-secondary" value="Download main table as TSV" @click="downloadMainTableTSV"/>
                 </div>
                 <div class="d-flex flex-wrap gap-2 mb-3">
