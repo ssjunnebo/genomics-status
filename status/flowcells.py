@@ -817,6 +817,7 @@ class ReadTotalsDataHandler(SafeHandler):
         if not query:
             data = {}
             expected_min_yield_per_sample = None
+            expected_min_yield_formula_mode = None
         else:
             data = self.get_total_reads(self.application, query)
             project_run_mode = None
@@ -828,7 +829,10 @@ class ReadTotalsDataHandler(SafeHandler):
                         break
                 if project_run_mode:
                     break
-            expected_min_yield_per_sample = self.get_expected_min_yield_per_sample(
+            (
+                expected_min_yield_per_sample,
+                expected_min_yield_formula_mode,
+            ) = self.get_expected_min_yield_per_sample(
                 self.application,
                 query,
                 list(data.keys()),
@@ -844,6 +848,7 @@ class ReadTotalsDataHandler(SafeHandler):
 
         data["isHiseqX"] = is_hiseq_x
         data["expectedMinYieldPerSample"] = expected_min_yield_per_sample
+        data["expectedMinYieldFormulaMode"] = expected_min_yield_formula_mode
 
         self.set_header("Content-type", "application/json")
         self.write(json.dumps(data))
@@ -955,7 +960,7 @@ class ReadTotalsDataHandler(SafeHandler):
         app, query, sample_names, project_run_mode=None
     ):
         if not sample_names:
-            return None
+            return None, None
 
         project_rows = app.cloudant.post_view(
             db="projects",
@@ -965,7 +970,7 @@ class ReadTotalsDataHandler(SafeHandler):
             include_docs=True,
         ).get_result()["rows"]
         if not project_rows:
-            return None
+            return None, None
 
         details = project_rows[0].get("doc", {}).get("details", {})
         flowcell_type = str(details.get("flowcell", "")).strip()
@@ -977,25 +982,25 @@ class ReadTotalsDataHandler(SafeHandler):
             key=query,
         ).get_result()["rows"]
         if not sample_rows:
-            return None
+            return None, None
 
         total_samples = len(sample_rows[0].get("value") or {})
         if total_samples == 0:
-            return None
-
+            return None, None
+        sequencing_ordered = ReadTotalsDataHandler._parse_units_ordered(
+            details.get("sequence_units_ordered_(lanes)")
+        )
         if flowcell_type.startswith("Universal-"):
-            units_ordered = ReadTotalsDataHandler._parse_units_ordered(
-                details.get("sequence_units_ordered_(lanes)")
-            )
-            if units_ordered is None:
-                return None
+            if sequencing_ordered is None:
+                return None, None
 
             return (
-                units_ordered
+                sequencing_ordered
                 * ReadTotalsDataHandler.UNIT_YIELD
                 * ReadTotalsDataHandler.FLOWCELL_YIELD_FACTOR
                 / total_samples
-                * ReadTotalsDataHandler.SAMPLE_YIELD_FACTOR
+                * ReadTotalsDataHandler.SAMPLE_YIELD_FACTOR,
+                "units",
             )
 
         # Prefer the run mode already loaded with the per-sample flowcell rows.
@@ -1006,7 +1011,7 @@ class ReadTotalsDataHandler(SafeHandler):
                 details.get("flowcell_id") or details.get("flowcell") or ""
             ).strip()
             if not flowcell_name:
-                return None
+                return None, None
 
             flowcell_rows = app.cloudant.post_view(
                 db="x_flowcells",
@@ -1015,7 +1020,7 @@ class ReadTotalsDataHandler(SafeHandler):
                 key=flowcell_name,
             ).get_result()["rows"]
             if not flowcell_rows:
-                return None
+                return None, None
 
             run_mode = str(
                 flowcell_rows[0].get("value", {}).get("run_mode", "")
@@ -1023,14 +1028,16 @@ class ReadTotalsDataHandler(SafeHandler):
 
         lane_threshold = thresholds.get(run_mode, 0)
         if lane_threshold <= 0:
-            return None
+            return None, None
 
         return (
-            lane_threshold
+            sequencing_ordered
+            * lane_threshold
             * 1_000_000
             * ReadTotalsDataHandler.FLOWCELL_YIELD_FACTOR
             / total_samples
-            * ReadTotalsDataHandler.SAMPLE_YIELD_FACTOR
+            * ReadTotalsDataHandler.SAMPLE_YIELD_FACTOR,
+            "lanes",
         )
 
 

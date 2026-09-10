@@ -14,6 +14,7 @@ const vReadsTotalComponent = {
             readsData: {},
             isHiseqX: false,
             expectedMinYieldPerSample: null,
+            expectedMinYieldFormulaMode: null,
             showFlowcellSelection: false,
             bulkSelectedFlowcells: {},
             highlightedSample: null,
@@ -175,6 +176,12 @@ const vReadsTotalComponent = {
             }
             return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value);
         },
+        expectedMinYieldFormulaText() {
+            if (this.expectedMinYieldFormulaMode === 'lanes') {
+                return 'ordered lanes × lane threshold × 0.9 / number of project samples × 0.75.';
+            }
+            return 'ordered units × 600M × 0.9 / number of project samples × 0.75.';
+        },
     },
     
     watch: {
@@ -197,8 +204,10 @@ const vReadsTotalComponent = {
                     const data = response.data;
                     this.isHiseqX = data.isHiseqX || false;
                     this.expectedMinYieldPerSample = data.expectedMinYieldPerSample ?? null;
+                    this.expectedMinYieldFormulaMode = data.expectedMinYieldFormulaMode ?? null;
                     delete data.isHiseqX;
                     delete data.expectedMinYieldPerSample;
+                    delete data.expectedMinYieldFormulaMode;
                     this.readsData = data;
                     
                     // Initialize checkbox state
@@ -427,7 +436,7 @@ const vReadsTotalComponent = {
                         width: 2,
                         zIndex: 5,
                         label: {
-                            text: 'Expected minimum yield / sample',
+                            text: 'Expected minimum yield',
                             align: 'right',
                             style: { color: '#fd0d0d' }
                         }
@@ -476,8 +485,11 @@ const vReadsTotalComponent = {
             <div>
                 <div id="read_totals_summary_chart"></div>
                 <p v-if="expectedMinYieldPerSample !== null" class="text-muted small mb-3">
-                    Expected minimum yield / sample threshold: <strong>{{ formattedExpectedMinYieldPerSample }}</strong> reads/sample.
-                    Formula: ordered lanes × 600M × 0.9 × 0.75 / number of project samples.
+                    Expected minimum yield per sample:
+                    <strong
+                        :title="'Formula: ' + expectedMinYieldFormulaText"
+                        style="text-decoration: underline dotted; cursor: help;"
+                    >{{ formattedExpectedMinYieldPerSample }}</strong>.
                 </p>
                 <div class="btn-group mb-3" role="group">
                     <input type="button" class="btn btn-outline-secondary" :value="isAllSelected ? 'Uncheck all' : 'Check all'" @click="toggleAllSelection"/>
