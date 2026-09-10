@@ -14,8 +14,7 @@ const vReadsTotalComponent = {
             readsData: {},
             isHiseqX: false,
             expectedMinYieldPerSample: null,
-            showBulkFlowcellEditor: false,
-            bulkFlowcellSearch: '',
+            showFlowcellSelection: false,
             bulkSelectedFlowcells: {},
             highlightedSample: null,
             checkedState: {},
@@ -113,11 +112,6 @@ const vReadsTotalComponent = {
                 });
             });
             return Array.from(ids).sort();
-        },
-        filteredFlowcellIds() {
-            const filter = this.bulkFlowcellSearch.trim().toLowerCase();
-            if (!filter) return this.allFlowcellIds;
-            return this.allFlowcellIds.filter(id => id.toLowerCase().includes(filter));
         },
         selectedFlowcellIds() {
             return this.allFlowcellIds.filter(id => this.bulkSelectedFlowcells[id]);
@@ -222,8 +216,7 @@ const vReadsTotalComponent = {
                     this.allFlowcellIds.forEach(id => {
                         this.bulkSelectedFlowcells[id] = true;
                     });
-                    this.bulkFlowcellSearch = '';
-                    this.showBulkFlowcellEditor = false;
+                    this.showFlowcellSelection = false;
                     
                     this.loading = false;
                     this.$nextTick(() => this.renderChart());
@@ -351,21 +344,8 @@ const vReadsTotalComponent = {
             if (value === null || value === undefined) return '-';
             return Number(value).toFixed(2);
         },
-        toggleBulkFlowcellEditor() {
-            this.showBulkFlowcellEditor = !this.showBulkFlowcellEditor;
-        },
-        selectVisibleFlowcells() {
-            this.filteredFlowcellIds.forEach(id => {
-                this.bulkSelectedFlowcells[id] = true;
-            });
-        },
-        clearVisibleFlowcells() {
-            this.filteredFlowcellIds.forEach(id => {
-                this.bulkSelectedFlowcells[id] = false;
-            });
-        },
-        clearAllBulkSelections() {
-            this.bulkSelectedFlowcells = {};
+        toggleFlowcellSelection() {
+            this.showFlowcellSelection = !this.showFlowcellSelection;
         },
         applyBulkFlowcellSelection(isChecked) {
             const selectedSet = this.selectedFlowcellIdSet;
@@ -502,7 +482,7 @@ const vReadsTotalComponent = {
                 <div class="btn-group mb-3" role="group">
                     <input type="button" class="btn btn-outline-secondary" :value="isAllSelected ? 'Uncheck all' : 'Check all'" @click="toggleAllSelection"/>
                     <input type="button" class="btn btn-outline-secondary" :value="areAllSamplesExpanded ? 'Collapse all' : 'Expand all'" @click="toggleAllSamplesExpanded"/>
-                    <input type="button" class="btn btn-outline-secondary" :value="showBulkFlowcellEditor ? 'Hide bulk flowcell editor' : 'Bulk edit flowcells'" @click="toggleBulkFlowcellEditor"/>
+                    <input type="button" class="btn btn-outline-secondary" :value="showFlowcellSelection ? 'Hide flowcell selection' : 'Select flowcells'" @click="toggleFlowcellSelection"/>
                     <input type="button" class="btn btn-outline-secondary" value="Download main table as TSV" @click="downloadMainTableTSV"/>
                 </div>
                 <div class="d-flex flex-wrap gap-2 mb-3">
@@ -523,26 +503,14 @@ const vReadsTotalComponent = {
                         {{ areSamplesFullyChecked(failedLibQcSamples) ? 'Uncheck' : 'Check' }} Fail QC samples
                     </button>
                 </div>
-                <div v-if="showBulkFlowcellEditor" class="card mb-3">
+                <div v-if="showFlowcellSelection" class="card mb-3">
                     <div class="card-body">
-                        <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
-                            <div style="min-width: 260px;">
-                                <label class="form-label fw-bold" for="bulk_flowcell_search">Find flowcell or lane</label>
-                                <input id="bulk_flowcell_search" type="text" class="form-control" v-model="bulkFlowcellSearch" placeholder="Search IDs"/>
-                            </div>
-                            <input type="button" class="btn btn-outline-secondary" value="Select visible" @click="selectVisibleFlowcells"/>
-                            <input type="button" class="btn btn-outline-secondary" value="Clear visible" @click="clearVisibleFlowcells"/>
-                            <input type="button" class="btn btn-outline-secondary" value="Clear selected IDs" @click="clearAllBulkSelections"/>
-                        </div>
-
                         <p class="mb-2">
-                            Selected IDs: {{ selectedFlowcellIds.length }}.
-                            Matching rows: {{ bulkAffectedRowsCount }} across {{ bulkAffectedSamplesCount }} samples.
+                            Select one or more flowcells below, then apply the change across all samples.
                         </p>
 
                         <div style="max-height: 220px; overflow: auto; border: 1px solid #d9d9d9; border-radius: 4px; padding: 8px;">
-                            <div v-if="filteredFlowcellIds.length === 0" class="text-muted">No flowcell/lane IDs match this search.</div>
-                            <div v-for="id in filteredFlowcellIds" :key="id" class="form-check">
+                            <div v-for="id in allFlowcellIds" :key="id" class="form-check">
                                 <input class="form-check-input" type="checkbox" :id="'bulk_' + id" v-model="bulkSelectedFlowcells[id]"/>
                                 <label class="form-check-label" :for="'bulk_' + id">{{ id }}</label>
                             </div>
