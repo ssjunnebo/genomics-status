@@ -447,8 +447,8 @@ export const vProjectDetails = {
                             </template>
                             <div class="mt-1 pt-1 rounded-3">
                                 <h3 class="row mb-0">
-                                    <button class="btn btn-large badge text-primary border col-11" :href="'/reads_total/' + project_id" style="padding: 0.85rem !important;">
-                                        <a :href="'/reads_total/' + project_id" target="_blank" rel="noopener noreferrer" class="text-decoration-none row d-inline">
+                                    <button class="btn btn-large badge text-primary border col-11" :href="'/read_totals/' + project_id" style="padding: 0.85rem !important;">
+                                        <a :href="'/read_totals/' + project_id" target="_blank" rel="noopener noreferrer" class="text-decoration-none row d-inline">
                                             <span class="col-6 float-left text-left">Read totals</span>
                                             <i class="fa-solid fa-chart-column float-right text-primary col-1 px-0"></i>
                                         </a>

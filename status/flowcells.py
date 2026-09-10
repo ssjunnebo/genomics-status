@@ -783,15 +783,15 @@ class FlowcellLinksDataHandler(SafeHandler):
                 self.finish(json.dumps(links))
 
 
-class ReadsTotalHandler(SafeHandler):
+class ReadTotalsHandler(SafeHandler):
     """Serves external links for each project
     Links are stored as JSON in LIMS / project
-    URL: /reads_total/([^/]*)
+    URL: /read_totals/([^/]*)
     """
 
     def get(self, query):
         self.set_header("Content-type", "text/html")
-        t = self.application.loader.load("reads_total.html")
+        t = self.application.loader.load("read_totals.html")
 
         self.write(
             t.generate(
@@ -802,10 +802,10 @@ class ReadsTotalHandler(SafeHandler):
         )
 
 
-class ReadsTotalDataHandler(SafeHandler):
-    """API endpoint for reads_total data
+class ReadTotalsDataHandler(SafeHandler):
+    """API endpoint for read totals data
 
-    Loaded through /api/v1/reads_total/([^/]*)$
+    Loaded through /api/v1/read_totals/([^/]*)$
     Returns JSON with reads data for the given query
     """
 
@@ -916,7 +916,7 @@ class ReadsTotalDataHandler(SafeHandler):
 
         for sample_name, sample_rows in data.items():
             sample_data = project_sample_data.get(sample_name, {})
-            lib_qc_status = ReadsTotalDataHandler._sample_passed_library_qc(sample_data)
+            lib_qc_status = ReadTotalsDataHandler._sample_passed_library_qc(sample_data)
             for sample_row in sample_rows:
                 sample_row["lib_qc"] = lib_qc_status
 
@@ -984,7 +984,7 @@ class ReadsTotalDataHandler(SafeHandler):
             return None
 
         if flowcell_type.startswith("Universal-"):
-            units_ordered = ReadsTotalDataHandler._parse_units_ordered(
+            units_ordered = ReadTotalsDataHandler._parse_units_ordered(
                 details.get("sequence_units_ordered_(lanes)")
             )
             if units_ordered is None:
@@ -992,10 +992,10 @@ class ReadsTotalDataHandler(SafeHandler):
 
             return (
                 units_ordered
-                * ReadsTotalDataHandler.UNIT_YIELD
-                * ReadsTotalDataHandler.FLOWCELL_YIELD_FACTOR
+                * ReadTotalsDataHandler.UNIT_YIELD
+                * ReadTotalsDataHandler.FLOWCELL_YIELD_FACTOR
                 / total_samples
-                * ReadsTotalDataHandler.SAMPLE_YIELD_FACTOR
+                * ReadTotalsDataHandler.SAMPLE_YIELD_FACTOR
             )
 
         # Prefer the run mode already loaded with the per-sample flowcell rows.
@@ -1028,9 +1028,9 @@ class ReadsTotalDataHandler(SafeHandler):
         return (
             lane_threshold
             * 1_000_000
-            * ReadsTotalDataHandler.FLOWCELL_YIELD_FACTOR
+            * ReadTotalsDataHandler.FLOWCELL_YIELD_FACTOR
             / total_samples
-            * ReadsTotalDataHandler.SAMPLE_YIELD_FACTOR
+            * ReadTotalsDataHandler.SAMPLE_YIELD_FACTOR
         )
 
 

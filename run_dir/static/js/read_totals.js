@@ -1,4 +1,4 @@
-// Used by reads_total.html
+// Used by read_totals.html
 
 // Component definition - can be imported and used in other Vue apps
 const vReadsTotalComponent = {
@@ -192,7 +192,7 @@ const vReadsTotalComponent = {
     
     methods: {
         fetchData() {
-            axios.get(`/api/v1/reads_total/${this.query}`)
+            axios.get(`/api/v1/read_totals/${this.query}`)
                 .then(response => {
                     const data = response.data;
                     this.isHiseqX = data.isHiseqX || false;
@@ -386,7 +386,7 @@ const vReadsTotalComponent = {
                 rows.push(`${r.sample}\t${r.checkedReads}\t${q30Value}`);
             });
             const blob = new Blob([rows.join('\n') + '\n'], { type: 'text/tab-separated-values;charset=utf-8' });
-            saveAs(blob, `${this.query}_reads_total.tsv`);
+            saveAs(blob, `${this.query}_read_totals.tsv`);
         },
         renderChart() {
             if (!this.hasData) return;
@@ -410,7 +410,7 @@ const vReadsTotalComponent = {
                 }
                 seriesData[2].data.push(r.uncheckedReads);
             });
-            this.chartInstance = Highcharts.chart('reads_total_summary_chart', {
+            this.chartInstance = Highcharts.chart('read_totals_summary_chart', {
                 credits: { enabled: false },
                 chart: { type: 'column' },
                 title: { text: 'Sample Read Counts' },
@@ -450,7 +450,7 @@ const vReadsTotalComponent = {
     },
     template: /*html*/`
         <div>
-            <h1>Read Count Totals: <a :href="'/project/' + query" target="_blank" rel="noopener noreferrer" class="text-decoration-none">{{ query }}</a></h1>
+            <h1>Read Totals for <a :href="'/project/' + query" target="_blank" rel="noopener noreferrer" class="text-decoration-none">{{ query }}</a></h1>
         </div>
 
         <template v-if="loading && query">
@@ -474,7 +474,7 @@ const vReadsTotalComponent = {
 
         <template v-else-if="hasData">
             <div>
-                <div id="reads_total_summary_chart"></div>
+                <div id="read_totals_summary_chart"></div>
                 <p v-if="expectedMinYieldPerSample !== null" class="text-muted small mb-3">
                     Expected minimum yield / sample threshold: <strong>{{ formattedExpectedMinYieldPerSample }}</strong> reads/sample.
                     Formula: ordered lanes × 600M × 0.9 × 0.75 / number of project samples.
@@ -611,4 +611,4 @@ const vReadsTotalComponent = {
       return { query: "{{ query }}" };
     }
   });
-  app.mount('#reads_total_app');
+    app.mount('#read_totals_app');
