@@ -522,8 +522,8 @@ const vReadsTotalComponent = {
                         </div>
                     </div>
                 </div>
-                <div class="container-fluid">
-                    <table class="table table-hover table-striped align-middle reads_table">
+                <div class="container-fluid table-responsive mt-4">
+                    <table class="table table-striped table-bordered align-middle reads_table mb-0">
                         <thead>
                             <tr class="darkth">
                                 <th style="position: sticky; top: 0; z-index: 2;">Include</th>
