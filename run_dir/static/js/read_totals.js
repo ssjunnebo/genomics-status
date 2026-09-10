@@ -381,8 +381,9 @@ const vReadsTotalComponent = {
         sampleFlowcellCount(sample) {
             return (this.readsData[sample] || []).length;
         },
-        sampleTotalCount(sample) {
+        sampleSelectedCount(sample) {
             return (this.sampleRows(sample) || []).reduce((sum, d) => {
+                if (!this.checkedState[this.selectionKey(sample, d.fcp)]) return sum;
                 return sum + (Number.parseInt(d.cl, 10) || 0);
             }, 0);
         },
@@ -390,9 +391,11 @@ const vReadsTotalComponent = {
             const threshold = Number(this.expectedMinYieldPerSample);
             if (Number.isNaN(threshold)) return;
             this.sampleNames.forEach(sample => {
-                const shouldSelect = this.sampleTotalCount(sample) < threshold;
+                const shouldSelect = this.sampleSelectedCount(sample) < threshold;
                 this.sampleRows(sample).forEach(d => {
-                    this.checkedState[this.selectionKey(sample, d.fcp)] = shouldSelect;
+                    if (!shouldSelect) {
+                        this.checkedState[this.selectionKey(sample, d.fcp)] = false;
+                    }
                 });
             });
         },
