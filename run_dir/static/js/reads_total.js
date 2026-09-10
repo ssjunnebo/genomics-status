@@ -211,7 +211,7 @@ const vReadsTotalComponent = {
                     this.checkedState = {};
                     for (const [sample, rows] of Object.entries(this.readsData)) {
                         for (const d of rows) {
-                            this.checkedState[`${sample}_${d.fcp}`] = this.isRowInitiallyChecked(d);
+                            this.checkedState[`${sample}_${d.fcp}`] = true;
                         }
                     }
                     this.expandedSamples = {};
@@ -219,6 +219,9 @@ const vReadsTotalComponent = {
                         this.expandedSamples[sample] = false;
                     });
                     this.bulkSelectedFlowcells = {};
+                    this.allFlowcellIds.forEach(id => {
+                        this.bulkSelectedFlowcells[id] = true;
+                    });
                     this.bulkFlowcellSearch = '';
                     this.showBulkFlowcellEditor = false;
                     
@@ -243,11 +246,7 @@ const vReadsTotalComponent = {
             return this.Q30_THRESHOLD_DICT[run_mode][run_setup];
         },
         isRowInitiallyChecked(d) {
-            if (d.fcp.includes('_UD')) return false;
-            const threshold = this.getRowThreshold(d);
-            return d.q30 !== null && d.q30 !== undefined &&
-                   parseFloat(d.q30) >= threshold &&
-                   (d.sample_status ?? '') !== 'Failed';
+            return true;
         },
         q30Class(d) {
             if (d.fcp.includes('_UD')) return '';
