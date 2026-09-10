@@ -413,9 +413,11 @@ const vReadsTotalComponent = {
         },
         downloadMainTableTSV() {
             const rows = ['Sample\tReads\tQ30'];
-            this.summaryRows.forEach(r => {
-                const q30Value = r.avgQ30 === null ? '' : Number(r.avgQ30).toFixed(2);
-                rows.push(`${r.sample}\t${r.checkedReads}\t${q30Value}`);
+            this.sortedSampleNames.forEach(sample => {
+                const selectedReads = this.summaryRowMap[sample] || 0;
+                const avgQ30 = this.summaryRowQ30Map[sample];
+                const q30Value = avgQ30 === null || avgQ30 === undefined ? '' : Number(avgQ30).toFixed(2);
+                rows.push(`${sample}\t${selectedReads}\t${q30Value}`);
             });
             const blob = new Blob([rows.join('\n') + '\n'], { type: 'text/tab-separated-values;charset=utf-8' });
             saveAs(blob, `${this.query}_read_totals.tsv`);
