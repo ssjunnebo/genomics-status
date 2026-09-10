@@ -518,7 +518,6 @@ const vReadsTotalComponent = {
                     <input type="button" class="btn btn-outline-secondary" :value="isAllSelected ? 'Uncheck all' : 'Check all'" @click="toggleAllSelection"/>
                     <input type="button" class="btn btn-outline-secondary" :value="areAllSamplesExpanded ? 'Collapse all' : 'Expand all'" @click="toggleAllSamplesExpanded"/>
                     <input type="button" class="btn btn-outline-secondary" :value="showFlowcellSelection ? 'Hide flowcell selection' : 'Select flowcells'" @click="toggleFlowcellSelection"/>
-                    <input type="button" class="btn btn-outline-warning" value="Select below expected min yield" :disabled="expectedMinYieldPerSample === null" @click="selectSamplesBelowExpectedMinYield"/>
                     <input type="button" class="btn btn-outline-secondary" value="Download main table as TSV" @click="downloadMainTableTSV"/>
                 </div>
                 <div class="d-flex flex-wrap gap-2 mb-3">
@@ -537,6 +536,14 @@ const vReadsTotalComponent = {
                         @click="toggleSamplesByLibQc('Fail')"
                     >
                         {{ areSamplesFullyChecked(failedLibQcSamples) ? 'Uncheck' : 'Check' }} Fail QC samples
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-outline-warning rounded-pill"
+                        :disabled="expectedMinYieldPerSample === null"
+                        @click="selectSamplesBelowExpectedMinYield"
+                    >
+                        Check all samples below yield threshold
                     </button>
                 </div>
                 <div v-if="showFlowcellSelection" class="card mb-3">
