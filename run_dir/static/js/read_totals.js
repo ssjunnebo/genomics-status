@@ -604,7 +604,7 @@ const vReadsTotalComponent = {
                         <tbody>
                             <template v-for="sample in sortedSampleNames" :key="sample">
                                 <tr :id="sample" class="sample_table"
-                                    :class="{ highlighted: highlightedSample === sample, 'table-secondary': !isSampleChecked(sample) }"
+                                    :class="{ highlighted: highlightedSample === sample, 'table-secondary': !isSampleChecked(sample), 'text-muted': !isSampleChecked(sample) }"
                                     style="cursor: pointer; transition: background-color 0.15s ease;"
                                     @click="toggleSampleExpanded(sample)">
                                     <td>
@@ -637,9 +637,9 @@ const vReadsTotalComponent = {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <tr v-for="d in sampleRows(sample)" :key="d.fcp" :class="{ 'table-secondary': !checkedState[selectionKey(sample, d.fcp)] }">
+                                                <tr v-for="d in sampleRows(sample)" :key="d.fcp" :class="{ 'table-secondary': !checkedState[selectionKey(sample, d.fcp)], 'text-muted': !checkedState[selectionKey(sample, d.fcp)] }">
                                                     <td><input type="checkbox" v-model="checkedState[selectionKey(sample, d.fcp)]"/></td>
-                                                    <td><a class="text-decoration-none" :href="fcpFlowcellUrl(d.fcp)">{{ d.fcp }}</a></td>
+                                                    <td><a :class="{ 'text-decoration-none': true, 'text-muted': !checkedState[selectionKey(sample, d.fcp)] }" :href="fcpFlowcellUrl(d.fcp)">{{ d.fcp }}</a></td>
                                                     <td class="text-end" style="font-variant-numeric: tabular-nums;">{{ Number(d.cl).toLocaleString() }}</td>
                                                     <td class="text-end" :class="q30Class(d)" style="font-variant-numeric: tabular-nums;">{{ d.q30 }}</td>
                                                 </tr>
