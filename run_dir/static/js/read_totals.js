@@ -420,13 +420,7 @@ const vReadsTotalComponent = {
             const blob = new Blob([rows.join('\n') + '\n'], { type: 'text/tab-separated-values;charset=utf-8' });
             saveAs(blob, `${this.query}_read_totals.tsv`);
         },
-        renderChart() {
-            if (!this.hasData) return;
-            if (this.chartInstance) {
-                this.chartInstance.destroy();
-                this.chartInstance = null;
-            }
-            const sampleNames = this.summaryRows.map(r => r.sample);
+        buildChartSeriesData() {
             const seriesData = [
                 { name: 'q30>threshold', data: [], color: '#78b560' },
                 { name: 'q30&lt;threshold', data: [], color: '#e8cd4c' },
@@ -442,6 +436,47 @@ const vReadsTotalComponent = {
                 }
                 seriesData[2].data.push(r.uncheckedReads);
             });
+            return seriesData;
+        },
+        expectedMinYieldPlotLine() {
+            if (this.expectedMinYieldPerSample === null) {
+                return null;
+            }
+            return {
+                id: 'expected-min-yield',
+                color: '#fd0d0d',
+                dashStyle: 'ShortDash',
+                value: this.expectedMinYieldPerSample,
+                width: 2,
+                zIndex: 5,
+                label: {
+                    text: 'Expected minimum yield',
+                    align: 'right',
+                    style: { color: '#fd0d0d' }
+                }
+            };
+        },
+        renderChart() {
+            if (!this.hasData) return;
+            const sampleNames = this.summaryRows.map(r => r.sample);
+            const seriesData = this.buildChartSeriesData();
+            const plotLine = this.expectedMinYieldPlotLine();
+
+            if (this.chartInstance) {
+                this.chartInstance.xAxis[0].setCategories(sampleNames, false);
+                this.chartInstance.yAxis[0].setTitle({ text: '# ' + this.countLabel }, false);
+                this.chartInstance.yAxis[0].removePlotLine('expected-min-yield');
+                if (plotLine) {
+                    this.chartInstance.yAxis[0].addPlotLine(plotLine);
+                }
+                seriesData.forEach((series, index) => {
+                    this.chartInstance.series[index].update({ name: series.name, color: series.color }, false);
+                    this.chartInstance.series[index].setData(series.data, false);
+                });
+                this.chartInstance.redraw();
+                return;
+            }
+
             this.chartInstance = Highcharts.chart('read_totals_summary_chart', {
                 credits: { enabled: false },
                 chart: { type: 'column' },
@@ -452,18 +487,7 @@ const vReadsTotalComponent = {
                     min: 0,
                     title: { text: '# ' + this.countLabel },
                     reversedStacks: false,
-                    plotLines: this.expectedMinYieldPerSample !== null ? [{
-                        color: '#fd0d0d',
-                        dashStyle: 'ShortDash',
-                        value: this.expectedMinYieldPerSample,
-                        width: 2,
-                        zIndex: 5,
-                        label: {
-                            text: 'Expected minimum yield',
-                            align: 'right',
-                            style: { color: '#fd0d0d' }
-                        }
-                    }] : []
+                    plotLines: plotLine ? [plotLine] : []
                 },
                 plotOptions: {
                     column: { stacking: 'normal', borderWidth: 0, groupPadding: 0.1 },
